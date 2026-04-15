@@ -125,8 +125,8 @@ class PaperBinanceClient:
 | `get_futures_balance()` | `total_wallet_balance = account.current_balance`. `total_unrealized_pnl` = sum of `(mark_price - entry_price) * quantity * sign` over open `PaperPosition` rows, using `self.live.get_market_data(currency).current_price` for each symbol. `available_balance = current_balance - used_margin` where `used_margin = sum(entry_price * quantity / leverage)`. Returns same schema as live. |
 | `get_all_open_positions()` | Query `PaperPosition.objects.filter(account=account, status=OPEN)`. For each, compute `mark_price` and `unrealized_pnl` as above, then return the same dict shape as the live client — including `stop_loss_orders` / `take_profit_orders` arrays synthesized from the position's SL/TP fields so the agent sees consistent structure. |
 | `get_open_position(currency)` | Return signed `positionAmt` from the open `PaperPosition` for that symbol (0 if none). |
-| `open_long_position(currency, quantity, stop_loss_price, take_profit_price, leverage)` | Raise `ValueError` if `stop_loss_price is None`. Fetch execution price via `PaperFillEngine.simulate_market_fill(currency, BUY, quantity)`. Validate available margin; return `{"error": "Insufficient balance"}` if not enough. Compute fees, deduct from balance, create `PaperPosition(side=LONG, ...)`, create `PaperOperation(type=OPEN_LONG, status=SUCCESS)`. Return dict matching live shape (`main_order_id`, `stop_loss_order_id`, `take_profit_order_id` — synthesized UUIDs). |
-| `open_short_position(...)` | Same as long, with `side=SHORT` and SELL direction for slippage simulation. |
+| `open_long_position(currency, quantity, stop_loss_price, take_profit_price, leverage)` | Raise `ValueError` if `stop_loss_price is None`. Fetch execution price via `PaperFillEngine.simulate_market_fill(currency, BUY, quantity)`. Enforce minimum notional: if `quantity * price * leverage < 100` (USD), return `{"error": "Order notional below minimum ($100)"}` to mirror Binance's server-side rejection. Validate available margin; return `{"error": "Insufficient balance"}` if not enough. Compute fees, deduct from balance, create `PaperPosition(side=LONG, ...)`, create `PaperOperation(type=OPEN_LONG, status=SUCCESS)`. Return dict matching live shape (`main_order_id`, `stop_loss_order_id`, `take_profit_order_id` — synthesized UUIDs). |
+| `open_short_position(...)` | Same as long, with `side=SHORT` and SELL direction for slippage simulation. Same minimum-notional enforcement. |
 | `close_position(currency)` | Fetch open position; if none, return `{"status": "NO_POSITION"}`. Get close price via slippage simulation, compute realized PnL net of close fees, add to `account.current_balance`, mark position `CLOSED` with `close_reason=MANUAL`. |
 | `set_leverage(currency, leverage)` | Stateful in-memory dict (mirrors Binance behavior where leverage is a per-symbol account setting). Next `open_*` call for that currency picks it up if `leverage` arg is not passed. |
 | `get_daily_pnl(include_unrealized)` | Sum `realized_pnl` over `PaperPosition` closed today. Include unrealized from open positions if requested. Compute win rate, counts. |
@@ -274,6 +274,7 @@ Four test layers:
    - Opening long/short creates `PaperPosition`, deducts fees, decrements balance
    - Missing `stop_loss_price` raises `ValueError`
    - Insufficient balance returns error dict
+   - Notional below $100 returns error dict
    - Unrealized PnL calculated correctly under both LONG and SHORT
    - `set_leverage` is picked up by subsequent open calls
 
