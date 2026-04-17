@@ -342,3 +342,5 @@ apps/test_cases/serializers/chat.py
 macaco.pem
 
 trendradar/*
+# Git worktrees for isolated feature development
+.worktrees/
