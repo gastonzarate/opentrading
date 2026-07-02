@@ -1,3 +1,8 @@
+# Pruned to high-impact, price-moving catalysts only. Generic/noisy terms
+# (crypto, blockchain, politics, Trump/Biden, GDP, VIX, bull/bear market, etc.)
+# were removed: they flood matches without directional value for a futures bot.
+# Keep bilingual entries so both Chinese platforms and English RSS feeds match.
+
 # Crypto Assets
 Bitcoin
 BTC
@@ -8,15 +13,24 @@ ETH
 Solana
 SOL
 BNB
+Binance
 币安
 XRP
 DOGE
 狗狗币
 
-# High Impact Events
+# Stablecoins / systemic
+stablecoin
+稳定币
+Tether
+USDT
+depeg
+脱锚
+
+# Regulation & high-impact events
 SEC
 ETF
-regulation
+spot ETF
 监管
 hack
 黑客
@@ -24,15 +38,20 @@ exploit
 攻击
 liquidation
 清算
+bankruptcy
+破产
+contagion
+传染
+delisting
+下架
+token unlock
+解锁
 
-# Macro Economics & Federal Reserve
+# Federal Reserve / rates
 Federal Reserve
 Fed
 FOMC
 美联储
-联邦储备
-Jerome Powell
-Jay Powell
 Powell
 鲍威尔
 interest rate
@@ -47,105 +66,26 @@ hawkish
 鹰派
 dovish
 鸽派
-quantitative easing
-QE
-量化宽松
-tightening
-紧缩
-monetary policy
-货币政策
-fiscal policy
-财政政策
-treasury
-treasury yields
-bond yields
-国债
-债券收益率
 
-# Inflation & Economic Indicators
-inflation
-通胀
-膨胀
-deflation
-通缩
+# Inflation & key data releases
 CPI
-IPC
 消费者物价指数
 PPI
 生产者物价指数
 PCE
+inflation
+通胀
 core inflation
 核心通胀
-consumer price
-消费价格
-producer price
-生产者价格
-GDP
-经济增长
-economic growth
-recession
-衰退
-stagflation
-滞胀
-unemployment
-失业
-失业率
-jobs report
-就业报告
 NFP
 non-farm payroll
-nonfarm
 非农就业
+jobs report
+就业报告
+unemployment rate
+失业率
 jobless claims
 失业救济
-retail sales
-零售销售
-consumer confidence
-消费者信心
-
-# Political & Geopolitical
-Trump
-特朗普
-Biden
-拜登
-executive order
-行政命令
-tariff
-关税
-trade war
-贸易战
-sanctions
-制裁
-Congress
-国会
-Senate
-参议院
-White House
-白宫
-政治
-
-# Market Structure & Risk
-volatility
-波动性
-VIX
-恐慌指数
-fear index
-market crash
-崩盘
-correction
-回调
-bull market
-牛市
-bear market
-熊市
-risk-on
-风险偏好
-risk-off
-避险
-safe haven
-避风港
-flight to safety
-避险情绪
 
 # Derivatives
 funding rate
@@ -153,24 +93,4 @@ funding rate
 open interest
 持仓量
 options expiry
-期权
 期权到期
-
-# Risk Events
-bankruptcy
-破产
-depeg
-脱锚
-halt
-停止
-暂停
-contagion
-传染
-
-# General Crypto Terms
-crypto
-cryptocurrency
-加密货币
-数字货币
-blockchain
-区块链

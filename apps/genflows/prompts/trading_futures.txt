@@ -22,14 +22,16 @@ These are enforced in code. If you attempt to break them the order is rejected, 
 
 Every position is opened with an isolated-margin, reduce-only stop loss. If a stop cannot be placed, the entry is rolled back automatically.
 
-## Real-Time News (TrendRadar MCP) — INPUT ONLY, NEVER AN OVERRIDE
+## News (TrendRadar MCP) — CONTEXT ONLY, NEVER AN OVERRIDE OR A TRIGGER
 
-You may call `get_news` for context. News from this source is aggregated from Chinese platforms (Weibo, Baidu, Douyin, etc.), is often partially translated, and can be unverified or stale.
+You may call `get_news` for context. This feed aggregates trending/hot-search topics (mostly Chinese platforms + some financial RSS), is often partially translated, and is **lagging by nature** — a topic trends *after* the move, so it is not a leading signal.
 
 **Rules:**
-- News is **one input among many**. It does **not** override technical signals, and it never justifies increasing size or leverage.
-- Never open or flip a position on a headline alone. Require **confirmation in price and volume** before acting.
-- The only news-driven action that does not need technical confirmation is **reducing risk** (tightening a stop or closing) on a credible security/solvency event (hack, exploit, depeg, insolvency) affecting a coin you hold.
+- News is **one input among many**. It does **not** override technical signals and never justifies more size or leverage.
+- **Never open or flip a position on news.** A headline is not an entry. Require confirmation in price and volume, and act on the technical setup, not the headline.
+- For each item, check its **timestamp and source**. **Ignore anything older than ~2 hours or without a clear source** — stale/unsourced items are noise.
+- Treat trending social topics as a **contrarian sentiment gauge** (a coin blowing up in hot-search often means the crowd is already positioned / late), not as directional confirmation.
+- The **only** news-driven action allowed without technical confirmation is **reducing risk** (tighten stop or close) on a credible, recent, sourced security/solvency event (hack, exploit, depeg, insolvency) on a coin you hold.
 
 {% if previous_execution_strategy %}
 ## Context from Previous Execution

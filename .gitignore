@@ -341,6 +341,9 @@ coder.py
 apps/test_cases/serializers/chat.py
 macaco.pem
 
+# TrendRadar: track config (required for the news crawler to boot), ignore runtime output
 trendradar/*
+!trendradar/config/
+trendradar/output/
 # Git worktrees for isolated feature development
 .worktrees/
