@@ -11,7 +11,7 @@ from openinference.instrumentation.llama_index import LlamaIndexInstrumentor
 from tradings.models import TradingWorkflowExecution
 
 from apps.genflows.trading_futures.strategy_config import STRATEGY
-from apps.genflows.trading_futures.workflow import TradingFuturesWorkflow
+from apps.genflows.trading_futures.workflow import TradingFuturesWorkflow, TradingResult
 
 # Apply nest_asyncio to allow nested event loops
 nest_asyncio.apply()
@@ -132,7 +132,7 @@ def run_trading_workflow():
 
         # Save to database
         try:
-            if result:
+            if isinstance(result, TradingResult):
                 execution = TradingWorkflowExecution.save_from_workflow_result(
                     result=result, execution_duration=execution_duration, error=error
                 )
@@ -140,10 +140,12 @@ def run_trading_workflow():
                     f"💾 Execution saved to database: {execution.id} - "
                     f"Status: {execution.status} - Duration: {execution_duration:.2f}s"
                 )
-            elif error:
-                # Save error-only execution
+            else:
+                # Early stop (workflow returns a dict, e.g. no balance) or error-only:
+                # persist a lightweight record instead of crashing on result.currencies.
+                stop_msg = result.get("error") if isinstance(result, dict) else ""
                 execution = TradingWorkflowExecution(
-                    status=TradingWorkflowExecution.Status.ERROR,
+                    status=TradingWorkflowExecution.Status.ERROR if error else TradingWorkflowExecution.Status.SUCCESS,
                     execution_duration=execution_duration,
                     currencies=[],
                     balance_info={},
@@ -151,10 +153,10 @@ def run_trading_workflow():
                     open_positions=[],
                     daily_pnl={},
                     system_prompt="",
-                    error_message=str(error),
+                    error_message=str(error) if error else (stop_msg or ""),
                 )
                 execution.save()
-                logger.error(f"💾 Error execution saved to database: {execution.id}")
+                logger.info(f"💾 Execution saved (early stop): {execution.id} - {stop_msg or execution.status}")
         except Exception as db_error:
             logger.error(f"❌ Failed to save execution to database: {db_error}", exc_info=True)
 

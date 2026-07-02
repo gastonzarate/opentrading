@@ -265,13 +265,22 @@ class TradingFuturesWorkflow(Workflow):
         prompt_system = await agent.render_prompt(context=prompt_context)
 
         # Create tools
-        mcp_client = BasicMCPClient(
-            os.getenv("MCP_TRENDRADAR_URL")
-        )
-        mcp_tool_spec = McpToolSpec(
-            client=mcp_client,
-        )
-        tools = await mcp_tool_spec.to_tool_list_async()
+        # Only expose the few news tools the agent actually uses; the MCP offers
+        # ~27 tools and loading them all degrades tool selection. Names must match
+        # the TrendRadar MCP (get_latest_news / get_latest_rss / search_news).
+        tools = []
+        mcp_url = os.getenv("MCP_TRENDRADAR_URL")
+        if mcp_url:
+            try:
+                mcp_tool_spec = McpToolSpec(
+                    client=BasicMCPClient(mcp_url),
+                    allowed_tools=["get_latest_news", "get_latest_rss", "search_news"],
+                )
+                tools = await mcp_tool_spec.to_tool_list_async()
+            except Exception as e:
+                print(f"⚠️  News MCP unavailable ({e}); continuing without news tools")
+        else:
+            print("⚠️  MCP_TRENDRADAR_URL not set; continuing without news tools")
 
         binance_tools = BinanceTools(self.binance_client)
         tools += binance_tools.list_tools()

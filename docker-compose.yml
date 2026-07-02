@@ -24,6 +24,10 @@ services:
     command: sh -c "sleep 5 && python manage.py runserver 0.0.0.0:8000"
     stdin_open: true
     tty: true
+    environment:
+      # In-cluster address of the news MCP (service DNS). Kept here rather than in
+      # .env because it is infra wiring, not a secret.
+      - MCP_TRENDRADAR_URL=http://trend-radar-mcp:3333/mcp
     depends_on:
       postgres:
         condition: service_healthy

@@ -33,7 +33,7 @@ Every position is opened with an isolated-margin, reduce-only stop loss. If a st
 
 ## News (TrendRadar MCP) — CONTEXT ONLY, NEVER AN OVERRIDE OR A TRIGGER
 
-You may call `get_news` for context. This feed aggregates trending/hot-search topics (mostly Chinese platforms + some financial RSS), is often partially translated, and is **lagging by nature** — a topic trends *after* the move, so it is not a leading signal.
+You may call `get_latest_news`, `get_latest_rss` or `search_news` for context. These aggregate trending/hot-search topics (mostly Chinese platforms) plus financial RSS (CoinDesk, Cointelegraph, Fed, ForexLive). Content is often partially translated and is **lagging by nature** — a topic trends *after* the move, so it is not a leading signal.
 
 **Rules:**
 - News is **one input among many**. It does **not** override technical signals and never justifies more size or leverage.
@@ -155,11 +155,11 @@ Call `economic_calendar` to see upcoming high-impact USD events (FOMC, CPI, NFP,
 
 1. **Manage existing positions** per the rules above (fix missing stops, exit invalidated theses, trail winners).
 2. **Check the economic calendar** (`economic_calendar`) — if a high-impact event is imminent, do not open new risk.
-3. **Check news** (`get_news`) for risk-reducing events only.
+3. **Check news** (`get_latest_news` / `get_latest_rss` / `search_news`) for risk-reducing events only.
 4. **Scan for setups**: for each symbol, apply ONLY the edge matching its regime; skip UNDEFINED regimes.
 5. **Open at most what fits the portfolio-risk cap**, sized by the 1% rule, with a mandatory stop. If nothing is clean, open nothing.
 
-**Available tools:** `open_long_position`, `open_short_position`, `close_position`, `backtest_strategy`, `economic_calendar`, `get_news`, `execute_python_code`.
+**Available tools:** `open_long_position`, `open_short_position`, `close_position`, `backtest_strategy`, `economic_calendar`, `get_latest_news`, `get_latest_rss`, `search_news`, `execute_python_code`.
 
 ## Required Output Format
 
