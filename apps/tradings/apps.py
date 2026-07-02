@@ -4,8 +4,6 @@ import os
 from django.apps import AppConfig
 from django.conf import settings
 
-from apscheduler.schedulers.background import BackgroundScheduler
-
 logger = logging.getLogger(__name__)
 
 
@@ -43,31 +41,12 @@ class TradingsConfig(AppConfig):
             logger.info("⏭️  Skipping scheduler initialization (not in main process)")
             return
 
-        from apps.tradings.scheduler import run_trading_workflow
+        # Dynamic cadence: the scheduler fires once immediately and each run
+        # self-schedules the next one at the agent-chosen (clamped) delay.
+        from apps.tradings.scheduler import scheduler, start_scheduler
 
-        scheduler = BackgroundScheduler()
-
-        # Schedule the trading workflow. A single source of truth for the cadence
-        # so the scheduler, the log line and the agent prompt cannot drift apart.
-        from datetime import datetime, timezone
-
-        from apps.tradings.scheduler import EXECUTION_INTERVAL_MINUTES
-
-        scheduler.add_job(
-            run_trading_workflow,
-            "interval",
-            minutes=EXECUTION_INTERVAL_MINUTES,
-            id="trading_futures_workflow",
-            name="Trading Futures Workflow",
-            replace_existing=True,
-            misfire_grace_time=30,  # Allow 30s grace for missed executions
-            coalesce=True,  # Combine missed executions into one
-            max_instances=1,  # Only one instance at a time
-            next_run_time=datetime.now(timezone.utc),  # Execute immediately on startup
-        )
-
-        scheduler.start()
-        logger.info(f"✅ APScheduler started - Trading workflow will run every {EXECUTION_INTERVAL_MINUTES} minutes")
+        start_scheduler()
+        logger.info("✅ APScheduler started - trading workflow self-schedules each run")
 
         # Shutdown scheduler when Django exits
         import atexit

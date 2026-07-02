@@ -54,6 +54,7 @@ class TradingResult:
     agent_streaming_output: str = ""  # Full streaming output from agent
     strategy_for_next_execution: str = ""  # Extracted strategy for next execution
     system_prompt: str = ""  # Complete system prompt provided to agent
+    next_run_minutes: int = None  # Agent-chosen (clamped) minutes until the next run
 
 
 class TradingFuturesWorkflow(Workflow):
@@ -246,7 +247,6 @@ class TradingFuturesWorkflow(Workflow):
         )
 
         # Prepare context for prompt rendering
-        from apps.tradings.scheduler import EXECUTION_INTERVAL_MINUTES
         from apps.genflows.trading_futures.strategy_config import STRATEGY
 
         prompt_context = {
@@ -258,7 +258,6 @@ class TradingFuturesWorkflow(Workflow):
             "current_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "last_execution_time": last_execution_time,
             "previous_execution_strategy": previous_execution_strategy,
-            "execution_interval_minutes": EXECUTION_INTERVAL_MINUTES,
             "config": STRATEGY,
         }
 
@@ -329,6 +328,14 @@ class TradingFuturesWorkflow(Workflow):
         else:
             print("\n\n⚠️  Warning: Agent did not provide 'Strategy for Next Execution' section")
 
+        # Dynamic cadence: let the agent choose when to run again, clamped to bounds.
+        from apps.genflows.trading_futures.scheduling import decide_next_run_minutes, parse_next_run_minutes
+
+        next_run_minutes = decide_next_run_minutes(
+            parse_next_run_minutes(agent_response), has_open_positions=bool(ev.open_positions)
+        )
+        print(f"⏰ Next run in {next_run_minutes} min (agent-chosen, clamped)")
+
         print("\n" + "=" * 80)
         print("✓ Trading agent execution completed")
         print("=" * 80 + "\n")
@@ -344,5 +351,6 @@ class TradingFuturesWorkflow(Workflow):
                 agent_streaming_output=full_streaming_output,
                 strategy_for_next_execution=strategy_for_next_execution,
                 system_prompt=prompt_system,
+                next_run_minutes=next_run_minutes,
             )
         )

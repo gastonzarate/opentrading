@@ -40,6 +40,15 @@ class StrategyConfig:
     tp2_atr_multiplier: float = 3.0
     min_risk_reward: float = 2.0
 
+    # --- Dynamic cadence ----------------------------------------------------
+    # The agent decides when to run next (NEXT_RUN_MINUTES). The code clamps it:
+    # SL/TP live on the exchange (reduce-only), so the bot does not need seconds-
+    # level polling — it re-evaluates on the agent's schedule, bounded here.
+    default_run_minutes: int = 15          # used when the agent gives no/invalid value
+    min_run_minutes: int = 1               # floor (avoid hammering / cost)
+    max_run_minutes: int = 60              # ceiling when flat
+    max_run_minutes_with_position: int = 10  # tighter ceiling while a position is open
+
     # --- Regime filter (ADX-14) --------------------------------------------
     # ADX >= trend threshold  -> trending  -> momentum entries only
     # ADX <= range threshold  -> ranging   -> mean-reversion entries only
