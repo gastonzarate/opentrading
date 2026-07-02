@@ -117,13 +117,13 @@ Apply the edge that matches the symbol's regime. Never mix them, and never trade
 
 **Entry requires 2+ confirming signals within the chosen edge.** One signal is not enough. If in doubt, wait for the next cycle.
 
-## Position Sizing (1% rule)
+## Position Sizing (handled by the system — do NOT compute it)
 
-1. Stop distance = {{ config.atr_stop_multiplier }} × ATR(14) from entry.
-2. Risk budget = wallet × {{ config.risk_per_trade_pct }}%.
-3. **Quantity = Risk budget ÷ stop distance (in $ per unit).** This makes the dollar loss at the stop equal to your risk budget regardless of leverage.
-4. Leverage only sets margin; use {{ config.default_leverage }}x (never above {{ config.max_leverage }}x). Ensure margin used fits available balance and notional ≥ $100 (Binance minimum).
-5. Before adding a position, check total portfolio risk stays ≤ {{ config.max_portfolio_risk_pct }}%. Treat BTC/ETH/alts as correlated — concurrent longs are effectively one larger bet.
+**You do not calculate or pass a quantity.** When you call `open_long_position` / `open_short_position`, the system sizes the position in code from the 1% risk rule and the stop distance you provide (`quantity = wallet × {{ config.risk_per_trade_pct }}% ÷ |entry − stop|`). Your job is to provide a good **stop_loss_price** (set it at {{ config.atr_stop_multiplier }} × ATR(14) from entry) and, ideally, a **take_profit_price** at ≥ {{ config.min_risk_reward }}:1.
+
+- Use leverage {{ config.default_leverage }}x (the system caps at {{ config.max_leverage }}x).
+- The system also rejects the trade if it would breach the {{ config.max_portfolio_risk_pct }}% portfolio-risk cap, the {{ config.max_concurrent_positions }}-position limit, the min notional, or if the regime is UNDEFINED. Treat BTC/ETH/alts as correlated — concurrent same-direction trades are effectively one bigger bet.
+- A blocked call returns `{"blocked": true}` with a reason; read it and adjust — do not retry the same thing.
 
 ## Exits
 

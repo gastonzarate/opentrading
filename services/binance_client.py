@@ -19,6 +19,7 @@ class BinanceClient:
         risk_per_trade_pct=None,
         max_portfolio_risk_pct=None,
         max_concurrent_positions=None,
+        enforce_regime=False,
     ):
         """
         Initialize the Binance Client.
@@ -56,9 +57,51 @@ class BinanceClient:
         self.risk_per_trade_pct = risk_per_trade_pct
         self.max_portfolio_risk_pct = max_portfolio_risk_pct
         self.max_concurrent_positions = max_concurrent_positions
+        self.enforce_regime = enforce_regime
 
         # Cache of per-symbol exchange filters (step size, tick size, ...).
         self._symbol_filters_cache = {}
+
+    def compute_quantity_for_risk(self, currency: str, stop_loss_price: float) -> float:
+        """
+        Position size so that the loss at the stop equals risk_per_trade_pct% of
+        wallet (the 1% rule), computed in code instead of trusting the LLM's math.
+        Returns 0 if it cannot be determined.
+        """
+        if not self.risk_per_trade_pct or stop_loss_price is None:
+            return 0.0
+        mark = self.get_mark_price(currency)
+        if mark <= 0:
+            return 0.0
+        distance = abs(mark - stop_loss_price)
+        if distance <= 0:
+            return 0.0
+        wallet = self.get_futures_balance().get("total_wallet_balance", 0) or 0
+        if wallet <= 0:
+            return 0.0
+        risk_budget = wallet * (self.risk_per_trade_pct / 100)
+        symbol = f"{currency.upper()}USDT"
+        return self._round_quantity(symbol, risk_budget / distance)
+
+    def get_regime(self, currency: str) -> str:
+        """Current market regime for a symbol from 1h ADX (TREND/RANGE/UNDEFINED)."""
+        from apps.genflows.trading_futures.strategy_config import REGIME_UNDEFINED, classify_regime
+
+        symbol = f"{currency.upper()}USDT"
+        try:
+            df = self._calculate_indicators(self._get_klines(symbol, Client.KLINE_INTERVAL_1HOUR, limit=100))
+            adx = df["adx"].iloc[-1]
+            return classify_regime(None if pd.isna(adx) else float(adx))
+        except Exception as e:
+            print(f"Error computing regime for {symbol}: {e}")
+            return REGIME_UNDEFINED
+
+    def _below_min_notional(self, symbol: str, quantity: float, mark: float) -> bool:
+        """True if the order notional is below the exchange minimum (default $100)."""
+        min_notional = self._get_symbol_filters(symbol).get("min_notional") or 0
+        if min_notional <= 0 or mark <= 0:
+            return False
+        return quantity * mark < min_notional
 
     def _open_positions_risk_and_count(self):
         """
@@ -485,7 +528,7 @@ class BinanceClient:
     def open_long_position(
         self,
         currency: str,
-        quantity: float,
+        quantity: float = None,
         stop_loss_price: float = None,
         take_profit_price: float = None,
         leverage: int = None,
@@ -516,9 +559,19 @@ class BinanceClient:
         if self._daily_loss_limit_breached():
             return {"error": "Daily loss limit reached - new positions are blocked.", "blocked": True}
 
+        # Regime gate (phase-2 #2): never open in an undefined (no-edge) regime
+        if self.enforce_regime and self.get_regime(currency) == "UNDEFINED":
+            return {"error": "Regime is UNDEFINED (no clear trend/range) - not opening.", "blocked": True}
+
         # Leverage cap (phase-2 guardrail): the LLM cannot exceed the hard limit
         if self.max_leverage and leverage and leverage > self.max_leverage:
             return {"error": f"Leverage {leverage}x exceeds the {self.max_leverage}x cap.", "blocked": True}
+
+        # Size the position in code from the 1% rule when quantity is omitted (phase-2 #2)
+        if quantity is None:
+            quantity = self.compute_quantity_for_risk(currency, stop_loss_price)
+            if not quantity or quantity <= 0:
+                return {"error": "Could not compute a valid position size for the given risk/stop.", "blocked": True}
 
         # Risk-per-trade cap (phase-2 guardrail)
         if self._trade_exceeds_risk_cap(currency, quantity, stop_loss_price):
@@ -541,6 +594,14 @@ class BinanceClient:
         stop_loss_price = self._round_price(symbol, stop_loss_price)
         if take_profit_price:
             take_profit_price = self._round_price(symbol, take_profit_price)
+
+        # Reject sub-minimum notional before hitting the exchange (phase-2 #2)
+        mark_for_notional = self.get_mark_price(currency)
+        if self._below_min_notional(symbol, quantity, mark_for_notional):
+            return {
+                "error": f"Order notional ${quantity * mark_for_notional:.2f} is below the exchange minimum.",
+                "blocked": True,
+            }
 
         # Open main position (RESULT response type so avgPrice/entry is populated)
         main_order = self._place_order(
@@ -589,7 +650,7 @@ class BinanceClient:
     def open_short_position(
         self,
         currency: str,
-        quantity: float,
+        quantity: float = None,
         stop_loss_price: float = None,
         take_profit_price: float = None,
         leverage: int = None,
@@ -620,9 +681,19 @@ class BinanceClient:
         if self._daily_loss_limit_breached():
             return {"error": "Daily loss limit reached - new positions are blocked.", "blocked": True}
 
+        # Regime gate (phase-2 #2): never open in an undefined (no-edge) regime
+        if self.enforce_regime and self.get_regime(currency) == "UNDEFINED":
+            return {"error": "Regime is UNDEFINED (no clear trend/range) - not opening.", "blocked": True}
+
         # Leverage cap (phase-2 guardrail): the LLM cannot exceed the hard limit
         if self.max_leverage and leverage and leverage > self.max_leverage:
             return {"error": f"Leverage {leverage}x exceeds the {self.max_leverage}x cap.", "blocked": True}
+
+        # Size the position in code from the 1% rule when quantity is omitted (phase-2 #2)
+        if quantity is None:
+            quantity = self.compute_quantity_for_risk(currency, stop_loss_price)
+            if not quantity or quantity <= 0:
+                return {"error": "Could not compute a valid position size for the given risk/stop.", "blocked": True}
 
         # Risk-per-trade cap (phase-2 guardrail)
         if self._trade_exceeds_risk_cap(currency, quantity, stop_loss_price):
@@ -645,6 +716,14 @@ class BinanceClient:
         stop_loss_price = self._round_price(symbol, stop_loss_price)
         if take_profit_price:
             take_profit_price = self._round_price(symbol, take_profit_price)
+
+        # Reject sub-minimum notional before hitting the exchange (phase-2 #2)
+        mark_for_notional = self.get_mark_price(currency)
+        if self._below_min_notional(symbol, quantity, mark_for_notional):
+            return {
+                "error": f"Order notional ${quantity * mark_for_notional:.2f} is below the exchange minimum.",
+                "blocked": True,
+            }
 
         # Open main position (RESULT response type so avgPrice/entry is populated)
         main_order = self._place_order(

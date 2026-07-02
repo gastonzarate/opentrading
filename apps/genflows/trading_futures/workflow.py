@@ -85,6 +85,7 @@ class TradingFuturesWorkflow(Workflow):
             risk_per_trade_pct=STRATEGY.risk_per_trade_pct,
             max_portfolio_risk_pct=STRATEGY.max_portfolio_risk_pct,
             max_concurrent_positions=STRATEGY.max_concurrent_positions,
+            enforce_regime=True,
         )
 
     @step

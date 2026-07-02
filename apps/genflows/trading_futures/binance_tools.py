@@ -32,59 +32,36 @@ class BinanceTools:
                 fn=self._open_long_position,
                 name="open_long_position",
                 description=(
-                    "Opens a long position (buy) on a cryptocurrency futures contract. "
-                    "Use this when you expect the price to increase.\n\n"
-                    "⚠️ MANDATORY RISK MANAGEMENT: stop_loss_price is REQUIRED. "
-                    "The function will ERROR if you attempt to open a position without a stop loss.\n\n"
-                    "CRITICAL PARAMETER REQUIREMENTS:\n"
-                    "- currency: Use ONLY the base currency name (e.g., 'BTC', 'ETH', 'SOL'). "
-                    "NEVER include 'USDT' suffix (e.g., 'BTCUSDT' is WRONG).\n"
-                    "- quantity: Must be rounded correctly:\n"
-                    "  * BTC/ETH: Exactly 3 decimals (e.g., 0.001, 0.002, 0.003)\n"
-                    "  * Other coins: 1-2 decimals or whole numbers\n"
-                    "  * Calculate: (Available_Balance × Leverage) / Current_Price, then round\n"
-                    "- leverage: Integer 1-125. Recommended: 1-10x for safety\n"
-                    "- stop_loss_price: ⚠️ MANDATORY ⚠️ "
-                    "Function will fail without this.\n"
-                    "- take_profit_price: RECOMMENDED. Set minimum 1:2 risk-reward ratio\n\n"
-                    "MINIMUM ORDER SIZE: quantity × price × leverage MUST be ≥ $100 USD\n\n"
-                    "EXAMPLE: If BTC=$100,000, available_balance=$50, leverage=5x:\n"
-                    "  quantity = ($50 × 5) / $100,000 = 0.0025 → round to 0.002 (3 decimals)\n"
-                    "  notional = 0.002 × $100,000 × 5 = $1,000 ✓ (≥$100)\n"
-                    "  stop_loss = $98,000 (2% below) ← MANDATORY\n"
-                    "  take_profit = $104,000 (4% above) ← RECOMMENDED\n\n"
-                    "Best practices: Always calculate exact values, never guess. "
-                    "If balance is too low to meet $100 minimum, explain to user instead of attempting trade."
+                    "Opens a LONG position (buy) on a crypto futures contract, with a mandatory "
+                    "stop loss. Use only for an in-regime setup (see the strategy).\n\n"
+                    "PARAMETERS:\n"
+                    "- currency: base name ONLY, e.g. 'BTC', 'ETH', 'SOL' (NEVER 'BTCUSDT').\n"
+                    "- stop_loss_price: ⚠️ REQUIRED, below entry. The trade errors without it.\n"
+                    "- take_profit_price: recommended, >= 1:2 reward:risk above entry.\n"
+                    "- leverage: optional; the system caps it (do not try to exceed the cap).\n"
+                    "- quantity: ⚠️ DO NOT SET. The system computes the position size from the 1% "
+                    "risk rule and your stop distance. Passing it is unnecessary and discouraged.\n\n"
+                    "The system also enforces: daily-loss circuit breaker, portfolio-risk cap, "
+                    "isolated margin, min-notional, and blocks opening in an UNDEFINED regime. "
+                    "If a call is blocked it returns {\"blocked\": true} with a reason — do not retry blindly."
                 ),
             ),
             FunctionTool.from_defaults(
                 fn=self._open_short_position,
                 name="open_short_position",
                 description=(
-                    "Opens a short position (sell) on a cryptocurrency futures contract. "
-                    "Use this when you expect the price to decrease.\n\n"
-                    "⚠️ MANDATORY RISK MANAGEMENT: stop_loss_price is REQUIRED. "
-                    "The function will ERROR if you attempt to open a position without a stop loss.\n\n"
-                    "CRITICAL PARAMETER REQUIREMENTS:\n"
-                    "- currency: Use ONLY the base currency name (e.g., 'BTC', 'ETH', 'SOL'). "
-                    "NEVER include 'USDT' suffix (e.g., 'BTCUSDT' is WRONG).\n"
-                    "- quantity: Must be rounded correctly:\n"
-                    "  * BTC/ETH: Exactly 3 decimals (e.g., 0.001, 0.002, 0.003)\n"
-                    "  * Other coins: 1-2 decimals or whole numbers\n"
-                    "  * Calculate: (Available_Balance × Leverage) / Current_Price, then round\n"
-                    "- leverage: Integer 1-125. Recommended: 1-10x for safety\n"
-                    "- stop_loss_price: ⚠️ MANDATORY ⚠️ "
-                    "Function will fail without this.\n"
-                    "- take_profit_price: RECOMMENDED. Set minimum 1:2 risk-reward ratio BELOW current price\n\n"
-                    "MINIMUM ORDER SIZE: quantity × price × leverage MUST be ≥ $100 USD\n\n"
-                    "EXAMPLE: If ETH=$3,500, available_balance=$30, leverage=3x:\n"
-                    "  quantity = ($30 × 3) / $3,500 = 0.0257 → round to 0.025 (3 decimals)\n"
-                    "  notional = 0.025 × $3,500 × 3 = $262.50 ✓ (≥$100)\n"
-                    "  stop_loss = $3,605 (3% above) ← MANDATORY\n"
-                    "  take_profit = $3,290 (6% below) ← RECOMMENDED\n\n"
-                    "⚠️ WARNING: Short positions carry unlimited theoretical risk. Stop losses are CRITICAL. "
-                    "Monitor funding rates - negative rates favor shorts, positive rates favor longs. "
-                    "Always calculate exact values, never guess."
+                    "Opens a SHORT position (sell) on a crypto futures contract, with a mandatory "
+                    "stop loss. Use only for an in-regime setup (see the strategy).\n\n"
+                    "PARAMETERS:\n"
+                    "- currency: base name ONLY, e.g. 'BTC', 'ETH', 'SOL' (NEVER 'ETHUSDT').\n"
+                    "- stop_loss_price: ⚠️ REQUIRED, ABOVE entry for shorts. The trade errors without it.\n"
+                    "- take_profit_price: recommended, >= 1:2 reward:risk below entry.\n"
+                    "- leverage: optional; the system caps it.\n"
+                    "- quantity: ⚠️ DO NOT SET. The system computes the size from the 1% risk rule "
+                    "and your stop distance.\n\n"
+                    "The system also enforces: daily-loss circuit breaker, portfolio-risk cap, "
+                    "isolated margin, min-notional, and blocks opening in an UNDEFINED regime. "
+                    "A blocked call returns {\"blocked\": true} with a reason — do not retry blindly."
                 ),
             ),
             FunctionTool.from_defaults(
@@ -144,10 +121,10 @@ class BinanceTools:
     def _open_long_position(
         self,
         currency: str,
-        quantity: float,
         stop_loss_price: float = None,
         take_profit_price: float = None,
         leverage: int = None,
+        quantity: float = None,
     ) -> dict:
         """
         Wrapper for BinanceClient.open_long_position.
@@ -155,24 +132,18 @@ class BinanceTools:
         Args:
             currency (str): The base currency symbol ONLY (e.g., 'BTC', 'ETH', 'SOL').
                            DO NOT include 'USDT' suffix.
-            quantity (float): The quantity to buy, properly rounded:
-                             - BTC/ETH: 3 decimals (e.g., 0.001, 0.002)
-                             - Others: 1-2 decimals or whole numbers
-            stop_loss_price (float): REQUIRED. Stop loss trigger price (1-3% below entry).
-            take_profit_price (float, optional): Take profit trigger price (minimum 1:2 risk-reward).
-            leverage (int, optional): Leverage to use (1-125). Recommended: 1-10x.
+            stop_loss_price (float): REQUIRED. Stop loss trigger price (below entry for longs).
+            take_profit_price (float, optional): Take profit trigger price (>= 1:2 reward:risk).
+            leverage (int, optional): Leverage to use. The system caps it.
+            quantity (float, optional): DO NOT SET. Leave empty — the system computes the size
+                           from the 1% risk rule and your stop distance. Only provided for
+                           backward compatibility / manual scripts.
 
         Returns:
             dict: Summary with main order and SL/TP order IDs.
 
         Example:
-            >>> _open_long_position(
-            ...     currency="BTC",  # Not "BTCUSDT"
-            ...     quantity=0.002,  # 3 decimals
-            ...     leverage=5,
-            ...     stop_loss_price=98000.0,
-            ...     take_profit_price=104000.0
-            ... )
+            >>> _open_long_position(currency="BTC", stop_loss_price=98000.0, take_profit_price=104000.0, leverage=3)
         """
         # Create operation record
         operation = TradingOperation.objects.create(
@@ -198,6 +169,7 @@ class BinanceTools:
             operation.status = TradingOperation.Status.SUCCESS
             operation.result_data = result
             operation.main_order_id = result.get("main_order_id")
+            operation.quantity = result.get("quantity")  # code-computed size (1% rule)
             operation.entry_price = result.get("entry_price")
             operation.stop_loss_order_id = result.get("stop_loss_order_id")
             operation.take_profit_order_id = result.get("take_profit_order_id")
@@ -215,10 +187,10 @@ class BinanceTools:
     def _open_short_position(
         self,
         currency: str,
-        quantity: float,
         stop_loss_price: float = None,
         take_profit_price: float = None,
         leverage: int = None,
+        quantity: float = None,
     ) -> dict:
         """
         Wrapper for BinanceClient.open_short_position.
@@ -226,24 +198,17 @@ class BinanceTools:
         Args:
             currency (str): The base currency symbol ONLY (e.g., 'BTC', 'ETH', 'SOL').
                            DO NOT include 'USDT' suffix.
-            quantity (float): The quantity to sell, properly rounded:
-                             - BTC/ETH: 3 decimals (e.g., 0.001, 0.002)
-                             - Others: 1-2 decimals or whole numbers
-            stop_loss_price (float): REQUIRED. Stop loss trigger price (1-3% ABOVE entry for shorts).
-            take_profit_price (float, optional): Take profit trigger price (minimum 1:2 risk-reward BELOW entry).
-            leverage (int, optional): Leverage to use (1-125). Recommended: 1-10x.
+            stop_loss_price (float): REQUIRED. Stop loss trigger price (ABOVE entry for shorts).
+            take_profit_price (float, optional): Take profit trigger price (>= 1:2 reward:risk, below entry).
+            leverage (int, optional): Leverage to use. The system caps it.
+            quantity (float, optional): DO NOT SET. Leave empty — the system computes the size
+                           from the 1% risk rule and your stop distance.
 
         Returns:
             dict: Summary with main order and SL/TP order IDs.
 
         Example:
-            >>> _open_short_position(
-            ...     currency="ETH",  # Not "ETHUSDT"
-            ...     quantity=0.025,  # 3 decimals
-            ...     leverage=3,
-            ...     stop_loss_price=3605.0,  # Above entry
-            ...     take_profit_price=3290.0  # Below entry
-            ... )
+            >>> _open_short_position(currency="ETH", stop_loss_price=3605.0, take_profit_price=3290.0, leverage=3)
         """
         # Create operation record
         operation = TradingOperation.objects.create(
@@ -269,6 +234,7 @@ class BinanceTools:
             operation.status = TradingOperation.Status.SUCCESS
             operation.result_data = result
             operation.main_order_id = result.get("main_order_id")
+            operation.quantity = result.get("quantity")  # code-computed size (1% rule)
             operation.entry_price = result.get("entry_price")
             operation.stop_loss_order_id = result.get("stop_loss_order_id")
             operation.take_profit_order_id = result.get("take_profit_order_id")

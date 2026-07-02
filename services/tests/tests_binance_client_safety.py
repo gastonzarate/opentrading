@@ -47,6 +47,7 @@ def make_client(**overrides):
     }
     # main order fills fine by default
     raw.futures_create_order.return_value = {"orderId": 111, "status": "NEW"}
+    raw.futures_mark_price.return_value = {"markPrice": "100000"}
     raw.futures_change_leverage.return_value = {"leverage": 5}
     raw.futures_change_margin_type.return_value = {"code": 200, "msg": "success"}
     raw.futures_position_information.return_value = [
