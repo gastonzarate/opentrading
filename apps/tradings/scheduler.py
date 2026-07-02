@@ -14,6 +14,11 @@ nest_asyncio.apply()
 
 logger = logging.getLogger(__name__)
 
+# Single source of truth for the trading cadence. Consumed by the APScheduler
+# job (apps.py) and injected into the agent prompt so all three (scheduler, log
+# and prompt) always agree.
+EXECUTION_INTERVAL_MINUTES = 10
+
 
 async def execute_workflow():
     """
@@ -33,7 +38,9 @@ async def execute_workflow():
         workflow = TradingFuturesWorkflow(timeout=480)
         logger.info("✅ Trading workflow initialized")
 
-        handler = workflow.run(currencies=["BTC", "ETH", "BFUSD", "BNB", "USDC"])
+        # Only liquid, volatile perpetuals. Stablecoins (USDC/BFUSD) were removed:
+        # trading a perp on a ~$1 asset has no edge and just wastes cycles/API calls.
+        handler = workflow.run(currencies=["BTC", "ETH", "BNB", "SOL"])
     langfuse.flush()
 
     return await handler

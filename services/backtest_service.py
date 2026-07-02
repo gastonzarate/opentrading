@@ -26,6 +26,24 @@ class BacktestService:
     ATR_TOLERANCE = 0.25  # ±25% of current value
     # MACD and funding rate: same sign (positive/negative)
 
+    # Round-trip trading cost applied to every simulated trade so the backtest is
+    # not systematically optimistic: taker fee ~0.05% per side + ~0.02% slippage
+    # per side => ~0.14% total. Subtracted from each trade's PnL.
+    FEE_PCT_PER_SIDE = 0.05
+    SLIPPAGE_PCT_PER_SIDE = 0.02
+    ROUND_TRIP_COST_PCT = (FEE_PCT_PER_SIDE + SLIPPAGE_PCT_PER_SIDE) * 2
+
+    # Similar setups within this many bars (hours) of an accepted one are skipped,
+    # so heavily overlapping/autocorrelated entries are not counted as independent.
+    MIN_BARS_BETWEEN_ENTRIES = 6
+
+    # Minimum simulated trades for the metrics to be treated as meaningful.
+    MIN_SAMPLE = 20
+
+    def _apply_costs(self, pnl_pct: float) -> float:
+        """Subtract the round-trip trading cost from a trade's percentage PnL."""
+        return pnl_pct - self.ROUND_TRIP_COST_PCT
+
     def __init__(self, binance_client):
         """
         Initialize BacktestService.
@@ -40,7 +58,7 @@ class BacktestService:
         currency: str,
         direction: str,
         current_conditions: dict,
-        lookback_days: int = 7,
+        lookback_days: int = 30,
         stop_loss_pct: float = 2.0,
         take_profit_pct: float = 4.0,
     ) -> dict:
@@ -171,8 +189,10 @@ class BacktestService:
             # Calculate indicators
             df = self._calculate_indicators(df)
 
-            # Filter to the actual lookback period (after indicators are calculated)
-            cutoff_time = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+            # Filter to the actual lookback period (after indicators are calculated).
+            # df["datetime"] is tz-naive (epoch ms parsed as UTC), so the cutoff must
+            # also be naive — pandas 3.0 raises on naive/tz-aware comparisons.
+            cutoff_time = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).replace(tzinfo=None)
             df = df[df["datetime"] >= cutoff_time].reset_index(drop=True)
 
             return df
@@ -241,8 +261,15 @@ class BacktestService:
         # Determine current price position relative to EMA
         price_above_ema = current_price > current_ema_9 if current_ema_9 else None
 
+        # Track the last accepted entry so overlapping (autocorrelated) setups
+        # within the cooldown window are not counted as independent samples.
+        last_accepted_idx = None
+
         # Skip last 24 rows (most recent day - need space to simulate trades)
         for idx in range(len(df) - 24):
+            if last_accepted_idx is not None and (idx - last_accepted_idx) < self.MIN_BARS_BETWEEN_ENTRIES:
+                continue
+
             row = df.iloc[idx]
             matches = True
             match_details = {}
@@ -280,6 +307,7 @@ class BacktestService:
                     match_details["atr"] = row["atr_14"]
 
             if matches:
+                last_accepted_idx = idx
                 similar.append(
                     {
                         "index": idx,
@@ -343,7 +371,7 @@ class BacktestService:
             if direction == "LONG":
                 # Check stop loss hit (low touches SL)
                 if low <= stop_loss_price:
-                    pnl_pct = -stop_loss_pct
+                    pnl_pct = self._apply_costs(-stop_loss_pct)
                     return {
                         "outcome": "STOP_LOSS",
                         "pnl_pct": pnl_pct,
@@ -354,7 +382,7 @@ class BacktestService:
 
                 # Check take profit hit (high touches TP)
                 if high >= take_profit_price:
-                    pnl_pct = take_profit_pct
+                    pnl_pct = self._apply_costs(take_profit_pct)
                     return {
                         "outcome": "TAKE_PROFIT",
                         "pnl_pct": pnl_pct,
@@ -366,7 +394,7 @@ class BacktestService:
             else:  # SHORT
                 # Check stop loss hit (high touches SL)
                 if high >= stop_loss_price:
-                    pnl_pct = -stop_loss_pct
+                    pnl_pct = self._apply_costs(-stop_loss_pct)
                     return {
                         "outcome": "STOP_LOSS",
                         "pnl_pct": pnl_pct,
@@ -377,7 +405,7 @@ class BacktestService:
 
                 # Check take profit hit (low touches TP)
                 if low <= take_profit_price:
-                    pnl_pct = take_profit_pct
+                    pnl_pct = self._apply_costs(take_profit_pct)
                     return {
                         "outcome": "TAKE_PROFIT",
                         "pnl_pct": pnl_pct,
@@ -398,7 +426,7 @@ class BacktestService:
 
         return {
             "outcome": "TIMEOUT",
-            "pnl_pct": pnl_pct,
+            "pnl_pct": self._apply_costs(pnl_pct),
             "entry_price": entry_price,
             "exit_price": exit_price,
             "holding_hours": holding_hours,
@@ -463,6 +491,9 @@ class BacktestService:
             "direction": direction,
             "similar_setups_found": len(similar_conditions),
             "trades_simulated": total_trades,
+            "sufficient_sample": total_trades >= self.MIN_SAMPLE,
+            "costs_included": True,
+            "round_trip_cost_pct": self.ROUND_TRIP_COST_PCT,
             "win_rate": round(win_rate, 1),
             "avg_profit_pct": round(avg_profit, 2),
             "avg_win_pct": round(avg_win, 2),

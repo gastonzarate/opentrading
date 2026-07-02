@@ -139,39 +139,6 @@ class BinanceTools:
                     "Si win_rate < 50% o expectancy < 0, considera NO operar."
                 ),
             ),
-            FunctionTool.from_defaults(
-                fn=self._backtest_strategy,
-                name="backtest_strategy",
-                description=(
-                    "Simula cómo habría funcionado una estrategia de trading "
-                    "basándose en condiciones de mercado similares en el pasado.\n\n"
-                    "⚠️ USA ESTA HERRAMIENTA ANTES de abrir una posición para validar "
-                    "que las condiciones actuales históricamente han sido rentables.\n\n"
-                    "PARÁMETROS:\n"
-                    "- currency: Base currency (ej: 'BTC', 'ETH'). NO incluir 'USDT'.\n"
-                    "- direction: 'LONG' o 'SHORT'\n"
-                    "- current_rsi: RSI actual (del market data)\n"
-                    "- current_macd: MACD actual (del market data)\n"
-                    "- current_price: Precio actual\n"
-                    "- current_ema_9: EMA(9) actual\n"
-                    "- current_funding_rate: Funding rate actual (opcional)\n"
-                    "- lookback_days: Días de historia a analizar (default: 7)\n"
-                    "- stop_loss_pct: % de stop loss a simular (default: 2.0)\n"
-                    "- take_profit_pct: % de take profit a simular (default: 4.0)\n\n"
-                    "RETORNA métricas para ayudar en la decisión:\n"
-                    "- win_rate: % de trades ganadores\n"
-                    "- avg_profit_pct: Ganancia promedio por trade\n"
-                    "- expectancy: Ganancia esperada por trade\n"
-                    "- profit_factor: Ratio ganancias/pérdidas\n"
-                    "- similar_setups_found: Cuántas condiciones similares se encontraron\n\n"
-                    "EJEMPLO DE USO:\n"
-                    "Antes de abrir LONG en BTC, llamar:\n"
-                    "backtest_strategy(currency='BTC', direction='LONG', "
-                    "current_rsi=28.5, current_macd=-150.2, current_price=105000, "
-                    "current_ema_9=104500, stop_loss_pct=2.0, take_profit_pct=4.0)\n\n"
-                    "Si win_rate < 50% o expectancy < 0, considera NO operar."
-                ),
-            ),
         ]
 
     def _open_long_position(
@@ -231,6 +198,7 @@ class BinanceTools:
             operation.status = TradingOperation.Status.SUCCESS
             operation.result_data = result
             operation.main_order_id = result.get("main_order_id")
+            operation.entry_price = result.get("entry_price")
             operation.stop_loss_order_id = result.get("stop_loss_order_id")
             operation.take_profit_order_id = result.get("take_profit_order_id")
             operation.save()
@@ -301,6 +269,7 @@ class BinanceTools:
             operation.status = TradingOperation.Status.SUCCESS
             operation.result_data = result
             operation.main_order_id = result.get("main_order_id")
+            operation.entry_price = result.get("entry_price")
             operation.stop_loss_order_id = result.get("stop_loss_order_id")
             operation.take_profit_order_id = result.get("take_profit_order_id")
             operation.save()
@@ -363,7 +332,7 @@ class BinanceTools:
         current_ema_9: float,
         current_funding_rate: float = 0.0,
         current_atr: float = None,
-        lookback_days: int = 7,
+        lookback_days: int = 30,
         stop_loss_pct: float = 2.0,
         take_profit_pct: float = 4.0,
     ) -> dict:

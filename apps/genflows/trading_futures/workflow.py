@@ -74,7 +74,17 @@ class TradingFuturesWorkflow(Workflow):
             binance_client: Optional BinanceClient instance. If not provided, creates a new one.
         """
         super().__init__(*args, **kwargs)
-        self.binance_client = BinanceClient()
+        from apps.genflows.trading_futures.strategy_config import STRATEGY
+
+        # Wire the deterministic risk guardrails into the client so the LLM
+        # cannot exceed them, regardless of what the prompt talks it into.
+        self.binance_client = BinanceClient(
+            max_daily_loss_pct=STRATEGY.max_daily_loss_pct,
+            max_leverage=STRATEGY.max_leverage,
+            risk_per_trade_pct=STRATEGY.risk_per_trade_pct,
+            max_portfolio_risk_pct=STRATEGY.max_portfolio_risk_pct,
+            max_concurrent_positions=STRATEGY.max_concurrent_positions,
+        )
 
     @step
     async def check_futures_balance(self, ctx: Context, ev: StartEvent) -> CollectMarketDataEvent | StopEvent:
@@ -225,12 +235,18 @@ class TradingFuturesWorkflow(Workflow):
             last_execution_time = previous_execution.created_at.strftime("%Y-%m-%d %H:%M:%S")
 
         # Create agent and render prompt
+        # Low temperature: real-money decisions should be as deterministic as
+        # possible so identical market data yields consistent actions (audit fix #19).
         agent = Agent(
             prompt_name="trading_futures",
             model=LLMModel.BEDROCK_CLAUDE_4_5_SONNET,
+            temperature=0.1,
         )
 
         # Prepare context for prompt rendering
+        from apps.tradings.scheduler import EXECUTION_INTERVAL_MINUTES
+        from apps.genflows.trading_futures.strategy_config import STRATEGY
+
         prompt_context = {
             "currencies": ev.currencies,
             "balance_info": ev.balance_info,
@@ -240,6 +256,8 @@ class TradingFuturesWorkflow(Workflow):
             "current_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "last_execution_time": last_execution_time,
             "previous_execution_strategy": previous_execution_strategy,
+            "execution_interval_minutes": EXECUTION_INTERVAL_MINUTES,
+            "config": STRATEGY,
         }
 
         # Render the prompt
