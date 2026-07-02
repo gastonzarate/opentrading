@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -48,6 +49,37 @@ def start_scheduler():
         return
     scheduler.start()
     schedule_next_run(0)
+
+
+# Binance user-data websocket manager (event-driven wake-ups).
+_event_twm = None
+
+
+def start_event_listener():
+    """
+    Start the Binance user-data stream so real fills (entry, stop-loss, take-profit)
+    wake the agent immediately by moving the next run to now.
+    """
+    global _event_twm
+    if _event_twm is not None:
+        return
+    from apps.tradings.binance_events import start_user_stream
+
+    _event_twm = start_user_stream(
+        os.getenv("BINANCE_API_KEY"),
+        os.getenv("BINANCE_API_SECRET"),
+        on_wake=lambda: schedule_next_run(0),
+    )
+
+
+def stop_event_listener():
+    global _event_twm
+    if _event_twm is not None:
+        try:
+            _event_twm.stop()
+        except Exception:
+            pass
+        _event_twm = None
 
 
 async def execute_workflow():

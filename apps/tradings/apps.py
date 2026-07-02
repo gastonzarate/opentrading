@@ -43,12 +43,17 @@ class TradingsConfig(AppConfig):
 
         # Dynamic cadence: the scheduler fires once immediately and each run
         # self-schedules the next one at the agent-chosen (clamped) delay.
-        from apps.tradings.scheduler import scheduler, start_scheduler
+        from apps.tradings.scheduler import scheduler, start_event_listener, start_scheduler, stop_event_listener
 
         start_scheduler()
         logger.info("✅ APScheduler started - trading workflow self-schedules each run")
 
-        # Shutdown scheduler when Django exits
+        # Event-driven wake-ups: Binance fills (entry / stop-loss / take-profit)
+        # trigger an immediate run instead of waiting for the next timer.
+        start_event_listener()
+
+        # Shutdown on exit
         import atexit
 
+        atexit.register(stop_event_listener)
         atexit.register(lambda: scheduler.shutdown())
