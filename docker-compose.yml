@@ -32,17 +32,17 @@ services:
     ports:
       - "8099:8000"
 
-  # TrendRadar - News aggregation service
+  # TrendRadar - News crawler (populates ./trendradar/output DBs on a schedule).
+  # The v6.10.0 image is driven by RUN_MODE/CRON_SCHEDULE/IMMEDIATE_RUN; the older
+  # ENABLE_*/REPORT_MODE env vars are ignored by its entrypoint.
   trend-radar:
     image: wantcat/trendradar:latest
     container_name: shark-bot-trendradar
     env_file: .env
     environment:
-      - ENABLE_CRAWLER=true
-      - ENABLE_NOTIFICATION=false
-      - REPORT_MODE=incremental
-      - ENABLE_WEBSERVER=true
-      - WEBSERVER_PORT=8080
+      - RUN_MODE=cron
+      - CRON_SCHEDULE=*/15 * * * *   # crawl every 15 minutes
+      - IMMEDIATE_RUN=true           # also crawl once on startup
     volumes:
       - ./trendradar/config:/app/config
       - ./trendradar/output:/app/output
@@ -50,19 +50,19 @@ services:
       - "8097:8080"
     restart: unless-stopped
 
-  # TrendRadar MCP - AI analysis service (optional)
+  # TrendRadar MCP - serves the crawled data to the trading agent via get_news.
+  # FastMCP on port 3333; reads config.yaml + the shared output DBs.
   trend-radar-mcp:
     image: wantcat/trendradar-mcp:latest
     container_name: shark-bot-trendradar-mcp
     env_file: .env
-    environment:
-      - PULL_ENABLED=false
-      - PULL_DAYS=7
     volumes:
       - ./trendradar/config:/app/config
       - ./trendradar/output:/app/output
     ports:
       - "3333:3333"
+    depends_on:
+      - trend-radar
     restart: unless-stopped
 
 volumes:

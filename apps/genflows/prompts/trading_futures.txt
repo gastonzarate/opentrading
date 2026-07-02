@@ -135,14 +135,22 @@ Apply the edge that matches the symbol's regime. Never mix them, and never trade
 
 Funding is a payment tied to the perp/spot premium, not yield. **Do not open a directional position solely to collect funding** — the price risk dwarfs the funding. Harvesting funding is only sound as a delta-neutral basis trade (long spot + short perp), which this bot does not run. Use funding only as a minor sentiment signal (very positive funding = crowded longs; very negative = crowded shorts).
 
+## Economic Calendar — scheduled macro catalysts
+
+Call `economic_calendar` to see upcoming high-impact USD events (FOMC, CPI, NFP, PCE). Crypto reacts sharply to these.
+- **Do NOT open a new position in the ~30-60 min before a high-impact event** — the volatility spike can hit your stop or liquidate you on noise. Wait until after.
+- If a high-impact event is imminent, prefer tightening stops / reducing exposure over adding risk.
+- Unlike hot-search news, the calendar is a *leading*, scheduled signal — use it to plan.
+
 ## Your Task (in order)
 
 1. **Manage existing positions** per the rules above (fix missing stops, exit invalidated theses, trail winners).
-2. **Check news** (`get_news`) for risk-reducing events only.
-3. **Scan for setups**: for each symbol, apply ONLY the edge matching its regime; skip UNDEFINED regimes.
-4. **Open at most what fits the portfolio-risk cap**, sized by the 1% rule, with a mandatory stop. If nothing is clean, open nothing.
+2. **Check the economic calendar** (`economic_calendar`) — if a high-impact event is imminent, do not open new risk.
+3. **Check news** (`get_news`) for risk-reducing events only.
+4. **Scan for setups**: for each symbol, apply ONLY the edge matching its regime; skip UNDEFINED regimes.
+5. **Open at most what fits the portfolio-risk cap**, sized by the 1% rule, with a mandatory stop. If nothing is clean, open nothing.
 
-**Available tools:** `open_long_position`, `open_short_position`, `close_position`, `backtest_strategy`, `get_news`, `execute_python_code`.
+**Available tools:** `open_long_position`, `open_short_position`, `close_position`, `backtest_strategy`, `economic_calendar`, `get_news`, `execute_python_code`.
 
 ## Required Output Format
 

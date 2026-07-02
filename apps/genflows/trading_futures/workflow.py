@@ -14,6 +14,7 @@ from services.binance_client import BinanceClient
 
 from apps.genflows.agent import Agent, LLMModel
 from apps.genflows.trading_futures.binance_tools import BinanceTools
+from apps.genflows.trading_futures.macro_tools import MacroTools
 from apps.genflows.trading_futures.python_tools import PythonTools
 
 
@@ -277,6 +278,9 @@ class TradingFuturesWorkflow(Workflow):
 
         python_tools = PythonTools()
         tools += python_tools.list_tools()
+
+        macro_tools = MacroTools()
+        tools += macro_tools.list_tools()
 
         print(f"✓ Agent initialized with {len(tools)} trading tools")
         if previous_execution_strategy:
