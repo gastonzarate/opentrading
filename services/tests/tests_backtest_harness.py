@@ -63,6 +63,23 @@ def test_simulate_long_hits_take_profit():
     assert t["r_multiple"] > 0
 
 
+def test_trailing_stop_locks_in_profit():
+    # entry 100, atr 10, trail 3xATR=30. Bar1 spikes to 150 -> stop trails to 120.
+    # Bar2 pulls back to 118 -> exit at the trailed stop 120 (profit locked).
+    dt = pd.date_range("2026-01-01", periods=3, freq="h")
+    df = pd.DataFrame({
+        "close": [100, 150, 118],
+        "high": [100, 150, 130],
+        "low": [100, 100, 118],
+        "atr_14": [10, 10, 10],
+        "datetime": dt,
+    })
+    bt = RegimeBacktester(BacktestParams(exit_mode="trailing", trail_atr_mult=3.0, atr_stop_mult=1.5))
+    t = bt.simulate_trade(df, 0, "LONG")
+    assert t["exit"] == 120
+    assert t["r_multiple"] > 0
+
+
 def test_simulate_long_hits_stop():
     bt = _bt()
     # stop=85; next bar low 80 triggers stop

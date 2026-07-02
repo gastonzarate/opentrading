@@ -41,6 +41,12 @@ class BacktestParams:
     funding_pct_per_8h: float = 0.01  # approximate cost against the position
     rsi_oversold: float = 30.0
     rsi_overbought: float = 70.0
+    # Which regimes to trade (a variant may trade only trends, or only ranges).
+    trade_regimes: tuple = (REGIME_TREND, REGIME_RANGE)
+    # Exit style: "fixed_tp" = fixed ATR take-profit; "trailing" = chandelier trailing
+    # stop with no fixed TP (lets winners run — the trend-following edge).
+    exit_mode: str = "fixed_tp"
+    trail_atr_mult: float = 3.0
 
     @property
     def round_trip_cost_pct(self) -> float:
@@ -70,6 +76,8 @@ class RegimeBacktester:
     def entry_signal(self, row) -> str | None:
         """Return 'LONG'/'SHORT'/None for a bar, applying exactly one edge per regime."""
         regime = classify_regime(None if pd.isna(row["adx"]) else float(row["adx"]))
+        if regime not in self.p.trade_regimes:
+            return None
         if pd.isna(row["ema_9"]) or pd.isna(row["ema_21"]) or pd.isna(row["macd"]) or pd.isna(row["rsi_7"]):
             return None
         close = row["close"]
@@ -95,29 +103,38 @@ class RegimeBacktester:
             return None
         stop_dist = self.p.atr_stop_mult * atr
         tp_dist = self.p.atr_tp_mult * atr
+        trail_dist = self.p.trail_atr_mult * atr
+        trailing = self.p.exit_mode == "trailing"
         if direction == "LONG":
             stop, tp = entry - stop_dist, entry + tp_dist
         else:
             stop, tp = entry + stop_dist, entry - tp_dist
 
         exit_price, exit_i = None, None
+        extreme = entry  # best price reached, for the trailing stop
         end = min(i + self.p.max_holding_bars, len(df) - 1)
         for j in range(i + 1, end + 1):
             hi, lo = float(df.iloc[j]["high"]), float(df.iloc[j]["low"])
             if direction == "LONG":
-                if lo <= stop:  # stop priority (conservative)
+                if lo <= stop:  # stop (initial or trailed) checked before this bar's move
                     exit_price, exit_i = stop, j
                     break
-                if hi >= tp:
+                if not trailing and hi >= tp:
                     exit_price, exit_i = tp, j
                     break
+                if trailing:  # ratchet the stop up under the highest high
+                    extreme = max(extreme, hi)
+                    stop = max(stop, extreme - trail_dist)
             else:
                 if hi >= stop:
                     exit_price, exit_i = stop, j
                     break
-                if lo <= tp:
+                if not trailing and lo <= tp:
                     exit_price, exit_i = tp, j
                     break
+                if trailing:
+                    extreme = min(extreme, lo)
+                    stop = min(stop, extreme + trail_dist)
         if exit_price is None:
             exit_i = end
             exit_price = float(df.iloc[end]["close"])
