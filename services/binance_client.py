@@ -647,14 +647,15 @@ class BinanceClient:
                 "rollback_order": rollback,
                 "main_order_id": main_order.get("orderId"),
             }
-        result["stop_loss_order_id"] = sl_order.get("orderId")
+        # closePosition SL/TP come back as algo orders (algoId), not orderId.
+        result["stop_loss_order_id"] = sl_order.get("orderId") or sl_order.get("algoId")
         result["stop_loss_price"] = stop_loss_price
 
         # Take profit is optional; a failure here is non-fatal (SL still protects).
         if take_profit_price:
             tp_order = self._place_take_profit(symbol, Client.SIDE_SELL, take_profit_price)
             if "error" not in tp_order:
-                result["take_profit_order_id"] = tp_order.get("orderId")
+                result["take_profit_order_id"] = tp_order.get("orderId") or tp_order.get("algoId")
                 result["take_profit_price"] = take_profit_price
             else:
                 result["take_profit_error"] = tp_order["error"]
@@ -768,14 +769,15 @@ class BinanceClient:
                 "rollback_order": rollback,
                 "main_order_id": main_order.get("orderId"),
             }
-        result["stop_loss_order_id"] = sl_order.get("orderId")
+        # closePosition SL/TP come back as algo orders (algoId), not orderId.
+        result["stop_loss_order_id"] = sl_order.get("orderId") or sl_order.get("algoId")
         result["stop_loss_price"] = stop_loss_price
 
         # Take profit is optional; a failure here is non-fatal (SL still protects).
         if take_profit_price:
             tp_order = self._place_take_profit(symbol, Client.SIDE_BUY, take_profit_price)
             if "error" not in tp_order:
-                result["take_profit_order_id"] = tp_order.get("orderId")
+                result["take_profit_order_id"] = tp_order.get("orderId") or tp_order.get("algoId")
                 result["take_profit_price"] = take_profit_price
             else:
                 result["take_profit_error"] = tp_order["error"]
