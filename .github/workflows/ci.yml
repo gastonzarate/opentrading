@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * *"   # daily 06:00 UTC — live demo regression check
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    name: Unit tests (mocked)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements/dev.txt
+      # Integration tests auto-skip without RUN_DEMO_INTEGRATION.
+      - run: python -m pytest -q
+
+  demo-integration:
+    name: Live demo integration (Binance testnet)
+    # Only on schedule / manual: avoids placing demo orders on every push and
+    # only matters where the demo secrets are configured.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements/dev.txt
+      - name: Run demo integration tests
+        # If the secrets are not set the tests skip (they gate on the key), so
+        # this stays green until the demo credentials are configured.
+        env:
+          RUN_DEMO_INTEGRATION: "1"
+          BINANCE_DEMO_API_KEY: ${{ secrets.BINANCE_DEMO_API_KEY }}
+          BINANCE_DEMO_API_SECRET: ${{ secrets.BINANCE_DEMO_API_SECRET }}
+          BINANCE_TESTNET_FUTURES_URL: https://demo-fapi.binance.com
+        run: python -m pytest services/tests/tests_demo_integration.py -v
