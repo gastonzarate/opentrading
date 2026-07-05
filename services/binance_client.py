@@ -41,11 +41,17 @@ class BinanceClient:
         if client is not None:
             self.client = client
         else:
-            api_key = os.getenv("BINANCE_API_KEY")
-            api_secret = os.getenv("BINANCE_API_SECRET")
+            # In testnet mode use the separate demo credentials (they only work on
+            # the futures testnet); fall back to the live vars if demo ones absent.
+            if testnet:
+                api_key = os.getenv("BINANCE_DEMO_API_KEY") or os.getenv("BINANCE_API_KEY")
+                api_secret = os.getenv("BINANCE_DEMO_API_SECRET") or os.getenv("BINANCE_API_SECRET")
+            else:
+                api_key = os.getenv("BINANCE_API_KEY")
+                api_secret = os.getenv("BINANCE_API_SECRET")
 
             if not api_key or not api_secret:
-                raise ValueError("BINANCE_API_KEY and BINANCE_API_SECRET must be set in environment variables.")
+                raise ValueError("Binance API key/secret must be set in environment variables.")
 
             self.client = Client(api_key, api_secret, testnet=testnet)
 

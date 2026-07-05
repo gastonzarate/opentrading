@@ -65,11 +65,18 @@ def start_event_listener():
         return
     from apps.tradings.binance_events import start_user_stream
 
+    testnet = os.getenv("BINANCE_TESTNET", "false").strip().lower() == "true"
+    if testnet:
+        api_key = os.getenv("BINANCE_DEMO_API_KEY") or os.getenv("BINANCE_API_KEY")
+        api_secret = os.getenv("BINANCE_DEMO_API_SECRET") or os.getenv("BINANCE_API_SECRET")
+    else:
+        api_key = os.getenv("BINANCE_API_KEY")
+        api_secret = os.getenv("BINANCE_API_SECRET")
     _event_twm = start_user_stream(
-        os.getenv("BINANCE_API_KEY"),
-        os.getenv("BINANCE_API_SECRET"),
+        api_key,
+        api_secret,
         on_wake=lambda: schedule_next_run(0),
-        testnet=os.getenv("BINANCE_TESTNET", "false").strip().lower() == "true",
+        testnet=testnet,
     )
 
 
