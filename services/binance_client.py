@@ -55,6 +55,14 @@ class BinanceClient:
 
             self.client = Client(api_key, api_secret, testnet=testnet)
 
+            if testnet:
+                # Binance moved the futures demo/testnet to demo-fapi.binance.com;
+                # python-binance still defaults to the legacy testnet.binancefuture.com.
+                # Point it at the current demo host (overridable via env).
+                base = os.getenv("BINANCE_TESTNET_FUTURES_URL", "https://demo-fapi.binance.com")
+                self.client.FUTURES_TESTNET_URL = f"{base}/fapi"
+                self.client.FUTURES_DATA_TESTNET_URL = f"{base}/futures/data"
+
         if max_daily_loss_pct is None:
             env_val = os.getenv("MAX_DAILY_LOSS_PCT")
             max_daily_loss_pct = float(env_val) if env_val else None
