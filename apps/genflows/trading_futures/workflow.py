@@ -78,9 +78,17 @@ class TradingFuturesWorkflow(Workflow):
         super().__init__(*args, **kwargs)
         from apps.genflows.trading_futures.strategy_config import STRATEGY
 
+        # Route to the Binance futures testnet when BINANCE_TESTNET=true, so the
+        # whole loop (orders, SL/TP, user-data stream) can be validated with play
+        # money before touching the live account.
+        testnet = os.getenv("BINANCE_TESTNET", "false").strip().lower() == "true"
+        if testnet:
+            print("🧪 BINANCE_TESTNET=true — trading against the Binance futures testnet")
+
         # Wire the deterministic risk guardrails into the client so the LLM
         # cannot exceed them, regardless of what the prompt talks it into.
         self.binance_client = BinanceClient(
+            testnet=testnet,
             max_daily_loss_pct=STRATEGY.max_daily_loss_pct,
             max_leverage=STRATEGY.max_leverage,
             risk_per_trade_pct=STRATEGY.risk_per_trade_pct,

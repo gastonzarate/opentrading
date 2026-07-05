@@ -69,6 +69,7 @@ def start_event_listener():
         os.getenv("BINANCE_API_KEY"),
         os.getenv("BINANCE_API_SECRET"),
         on_wake=lambda: schedule_next_run(0),
+        testnet=os.getenv("BINANCE_TESTNET", "false").strip().lower() == "true",
     )
 
 
