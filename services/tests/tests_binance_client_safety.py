@@ -250,3 +250,34 @@ def test_entry_price_captured_from_filled_order():
         if c.kwargs.get("type") == "MARKET"
     ][0]
     assert main.kwargs.get("newOrderRespType") == "RESULT"
+
+
+def test_balance_falls_back_to_per_asset_when_account_endpoint_fails():
+    """If futures_account() errors (demo -1109), fall back to
+    futures_account_balance() so the balance gate doesn't silently stall."""
+    client, raw = make_client()
+    raw.futures_account.side_effect = _api_exc("-1109 invalid account")
+    raw.futures_account_balance.return_value = [
+        {"asset": "USDT", "balance": "4998.83", "availableBalance": "4990.0", "crossUnPnl": "1.5"},
+        {"asset": "BNB", "balance": "0", "availableBalance": "0", "crossUnPnl": "0"},
+    ]
+
+    bal = client.get_futures_balance()
+
+    assert bal["total_wallet_balance"] == pytest.approx(4998.83)
+    assert bal["available_balance"] == pytest.approx(4990.0)
+    assert bal["total_unrealized_pnl"] == pytest.approx(1.5)
+    # zero-balance assets are dropped
+    assert [a["asset"] for a in bal["assets"]] == ["USDT"]
+
+
+def test_balance_returns_zero_when_both_endpoints_fail():
+    """Both endpoints down -> zeroed balance (workflow stops safely, no crash)."""
+    client, raw = make_client()
+    raw.futures_account.side_effect = _api_exc("-1109")
+    raw.futures_account_balance.side_effect = _api_exc("-1109")
+
+    bal = client.get_futures_balance()
+
+    assert bal["total_wallet_balance"] == 0
+    assert bal["assets"] == []
