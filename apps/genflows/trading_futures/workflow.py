@@ -250,7 +250,7 @@ class TradingFuturesWorkflow(Workflow):
         # possible so identical market data yields consistent actions (audit fix #19).
         agent = Agent(
             prompt_name="trading_futures",
-            model=LLMModel.BEDROCK_CLAUDE_4_5_SONNET,
+            model=LLMModel.BEDROCK_CLAUDE_5_SONNET,
             temperature=0.1,
         )
 
