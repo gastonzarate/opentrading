@@ -22,6 +22,8 @@ jobs:
       - run: pip install -r requirements/dev.txt
       # Integration tests auto-skip without RUN_DEMO_INTEGRATION.
       - run: python -m pytest -q
+        env:
+          DJANGO_SECRET_KEY: ci-dummy-secret-key-not-used-for-anything
 
   demo-integration:
     name: Live demo integration (Binance testnet)
@@ -41,6 +43,7 @@ jobs:
         # If the secrets are not set the tests skip (they gate on the key), so
         # this stays green until the demo credentials are configured.
         env:
+          DJANGO_SECRET_KEY: ci-dummy-secret-key-not-used-for-anything
           RUN_DEMO_INTEGRATION: "1"
           BINANCE_DEMO_API_KEY: ${{ secrets.BINANCE_DEMO_API_KEY }}
           BINANCE_DEMO_API_SECRET: ${{ secrets.BINANCE_DEMO_API_SECRET }}
