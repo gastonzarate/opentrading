@@ -18,6 +18,21 @@ from apps.genflows.trading_futures.macro_tools import MacroTools
 from apps.genflows.trading_futures.python_tools import PythonTools
 
 
+# The trading agent's model is env-selectable so we can iterate on it (e.g. run
+# the demo shakedown on Sonnet 4.5 while Sonnet 5 model access is being enabled
+# in Bedrock) without a code change. Defaults to Sonnet 5.
+_TRADING_AGENT_MODELS = {
+    "sonnet-5": LLMModel.BEDROCK_CLAUDE_5_SONNET,
+    "sonnet-4-5": LLMModel.BEDROCK_CLAUDE_4_5_SONNET,
+    "haiku-4-5": LLMModel.BEDROCK_CLAUDE_4_5_HAIKU,
+}
+
+
+def trading_agent_model() -> LLMModel:
+    key = os.getenv("TRADING_AGENT_MODEL", "sonnet-5").strip().lower()
+    return _TRADING_AGENT_MODELS.get(key, LLMModel.BEDROCK_CLAUDE_5_SONNET)
+
+
 class CollectMarketDataEvent(Event):
     """Event for collecting market data for a specific currency."""
 
@@ -250,7 +265,7 @@ class TradingFuturesWorkflow(Workflow):
         # possible so identical market data yields consistent actions (audit fix #19).
         agent = Agent(
             prompt_name="trading_futures",
-            model=LLMModel.BEDROCK_CLAUDE_5_SONNET,
+            model=trading_agent_model(),
             temperature=0.1,
         )
 
