@@ -226,7 +226,7 @@ def fetch_history(binance_client, symbol: str, interval: str = "1h", days: int =
     rows = []
     cursor = start
     while cursor < end:
-        batch = binance_client.client.get_klines(symbol=symbol, interval=interval, startTime=cursor, limit=1000)
+        batch = binance_client.client.futures_klines(symbol=symbol, interval=interval, startTime=cursor, limit=1000)
         if not batch:
             break
         rows.extend(batch)

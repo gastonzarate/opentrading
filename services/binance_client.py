@@ -298,7 +298,7 @@ class BinanceClient:
         symbol = f"{currency.upper()}USDT"
 
         # 1. Fetch Current Snapshot
-        ticker = self.client.get_symbol_ticker(symbol=symbol)
+        ticker = self.client.futures_symbol_ticker(symbol=symbol)
         current_price = float(ticker["price"])
 
         # Fetch recent klines for current indicators (using 1h interval for "current" context)
@@ -388,7 +388,9 @@ class BinanceClient:
         """
         Fetch historical klines and return as a DataFrame.
         """
-        klines = self.client.get_klines(symbol=symbol, interval=interval, limit=limit)
+        # Futures klines (not spot): correct source for a futures bot and works on
+        # the demo/testnet, where the spot endpoints are unavailable.
+        klines = self.client.futures_klines(symbol=symbol, interval=interval, limit=limit)
         df = pd.DataFrame(
             klines,
             columns=[
@@ -444,28 +446,28 @@ class BinanceClient:
 
     def _get_futures_metrics(self, symbol: str) -> dict:
         """
-        Fetch Futures Open Interest and Funding Rate.
+        Fetch Futures Open Interest and Funding Rate. These are supplementary, so
+        each is fetched independently and defaults to 0 on any failure (e.g. the
+        open-interest-history endpoint is unavailable on the demo) — a missing
+        metric must never crash the whole market-data collection.
         """
+        oi_latest, oi_average, funding_rate = 0, 0, 0.0
+
         try:
-            # Open Interest
-            # Fetching Open Interest Statistics (last 24 hours)
             oi_stats = self.client.futures_open_interest_hist(symbol=symbol, period="1h", limit=24)
+            if oi_stats:
+                oi_latest = float(oi_stats[-1]["sumOpenInterest"])
+                oi_average = sum(float(x["sumOpenInterest"]) for x in oi_stats) / len(oi_stats)
+        except Exception as e:
+            print(f"Error fetching open interest for {symbol}: {e}")
 
-            if not oi_stats:
-                return {"oi_latest": 0, "oi_average": 0, "funding_rate": 0}
-
-            latest_oi = float(oi_stats[-1]["sumOpenInterest"])
-            avg_oi = sum(float(x["sumOpenInterest"]) for x in oi_stats) / len(oi_stats)
-
-            # Funding Rate
+        try:
             funding_rate_info = self.client.futures_funding_rate(symbol=symbol, limit=1)
             funding_rate = float(funding_rate_info[-1]["fundingRate"]) * 100 if funding_rate_info else 0.0
+        except Exception as e:
+            print(f"Error fetching funding rate for {symbol}: {e}")
 
-            return {"oi_latest": latest_oi, "oi_average": avg_oi, "funding_rate": funding_rate}
-
-        except BinanceAPIException as e:
-            print(f"Error fetching futures metrics: {e}")
-            return {"oi_latest": 0, "oi_average": 0, "funding_rate": 0}
+        return {"oi_latest": oi_latest, "oi_average": oi_average, "funding_rate": funding_rate}
 
     def set_leverage(self, currency: str, leverage: int) -> bool:
         """

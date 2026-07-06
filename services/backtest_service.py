@@ -152,7 +152,7 @@ class BacktestService:
 
         try:
             # Get klines using the existing Binance client method
-            klines = self.binance_client.client.get_klines(
+            klines = self.binance_client.client.futures_klines(
                 symbol=symbol,
                 interval="1h",
                 limit=limit,

@@ -26,7 +26,7 @@ def _recent_klines(n=180):
 
 def _service():
     raw = MagicMock()
-    raw.get_klines.return_value = _recent_klines()
+    raw.futures_klines.return_value = _recent_klines()
     return BacktestService(BinanceClient(client=raw))
 
 

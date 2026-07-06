@@ -9,11 +9,6 @@ Opt-in: only run when RUN_DEMO_INTEGRATION=1 and demo keys are present. They are
 self-cleaning (always flatten + cancel). They deliberately avoid the aggregate
 account/balance endpoints, which can return -1109 on a demo whose COIN-M side is
 in a broken state; the USDⓈ-M order endpoints are what the bot uses.
-
-FOLLOW-UP: get_market_data / _get_klines use SPOT endpoints (get_klines,
-get_symbol_ticker). Those work on mainnet but break on the demo (spot testnet
-returns "Invalid Response: ok"). A futures bot should read futures_klines; until
-then, market-data is only validated on mainnet + by unit tests.
 """
 import math
 import os
@@ -40,11 +35,18 @@ def demo():
 
 
 def test_mark_price_and_filters(demo):
-    # Futures-native reads that the demo supports (get_market_data uses SPOT klines,
-    # which only work on mainnet — see FOLLOW-UP note in the file docstring).
     assert demo.get_mark_price("BTC") > 0
     filt = demo._get_symbol_filters("BTCUSDT")
     assert filt["step_size"] and filt["tick_size"]
+
+
+def test_market_data_and_regime(demo):
+    # Uses futures klines now, so it works on the demo too.
+    md = demo.get_market_data("BTC")
+    assert md["current_price"] > 0
+    assert md["regime"] in REGIMES
+    assert "macd_signal_series" in md and "current_adx" in md
+    assert demo.get_regime("BTC") in REGIMES
 
 
 def test_economic_calendar_reachable():

@@ -14,7 +14,7 @@ def _df(n=120):
     for i in range(n):
         price *= 1 + (0.006 if i % 3 else -0.005)
         rows.append([i * 3_600_000, price, price * 1.01, price * 0.99, price, 1000 + i, 0, 0, 0, 0, 0, 0])
-    raw.get_klines.return_value = rows
+    raw.futures_klines.return_value = rows
     c = BinanceClient(client=raw)
     return c, c._get_klines("BTCUSDT", "1h", n)
 
