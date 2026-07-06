@@ -14,6 +14,7 @@ from services.binance_client import BinanceClient
 
 from apps.genflows.agent import Agent, LLMModel
 from apps.genflows.trading_futures.binance_tools import BinanceTools
+from apps.genflows.trading_futures.macro_tools import MacroTools
 from apps.genflows.trading_futures.python_tools import PythonTools
 
 
@@ -53,6 +54,7 @@ class TradingResult:
     agent_streaming_output: str = ""  # Full streaming output from agent
     strategy_for_next_execution: str = ""  # Extracted strategy for next execution
     system_prompt: str = ""  # Complete system prompt provided to agent
+    next_run_minutes: int = None  # Agent-chosen (clamped) minutes until the next run
 
 
 class TradingFuturesWorkflow(Workflow):
@@ -74,7 +76,26 @@ class TradingFuturesWorkflow(Workflow):
             binance_client: Optional BinanceClient instance. If not provided, creates a new one.
         """
         super().__init__(*args, **kwargs)
-        self.binance_client = BinanceClient()
+        from apps.genflows.trading_futures.strategy_config import STRATEGY
+
+        # Route to the Binance futures testnet when BINANCE_TESTNET=true, so the
+        # whole loop (orders, SL/TP, user-data stream) can be validated with play
+        # money before touching the live account.
+        testnet = os.getenv("BINANCE_TESTNET", "false").strip().lower() == "true"
+        if testnet:
+            print("🧪 BINANCE_TESTNET=true — trading against the Binance futures testnet")
+
+        # Wire the deterministic risk guardrails into the client so the LLM
+        # cannot exceed them, regardless of what the prompt talks it into.
+        self.binance_client = BinanceClient(
+            testnet=testnet,
+            max_daily_loss_pct=STRATEGY.max_daily_loss_pct,
+            max_leverage=STRATEGY.max_leverage,
+            risk_per_trade_pct=STRATEGY.risk_per_trade_pct,
+            max_portfolio_risk_pct=STRATEGY.max_portfolio_risk_pct,
+            max_concurrent_positions=STRATEGY.max_concurrent_positions,
+            enforce_regime=True,
+        )
 
     @step
     async def check_futures_balance(self, ctx: Context, ev: StartEvent) -> CollectMarketDataEvent | StopEvent:
@@ -225,12 +246,17 @@ class TradingFuturesWorkflow(Workflow):
             last_execution_time = previous_execution.created_at.strftime("%Y-%m-%d %H:%M:%S")
 
         # Create agent and render prompt
+        # Low temperature: real-money decisions should be as deterministic as
+        # possible so identical market data yields consistent actions (audit fix #19).
         agent = Agent(
             prompt_name="trading_futures",
             model=LLMModel.BEDROCK_CLAUDE_4_5_SONNET,
+            temperature=0.1,
         )
 
         # Prepare context for prompt rendering
+        from apps.genflows.trading_futures.strategy_config import STRATEGY
+
         prompt_context = {
             "currencies": ev.currencies,
             "balance_info": ev.balance_info,
@@ -240,25 +266,38 @@ class TradingFuturesWorkflow(Workflow):
             "current_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "last_execution_time": last_execution_time,
             "previous_execution_strategy": previous_execution_strategy,
+            "config": STRATEGY,
         }
 
         # Render the prompt
         prompt_system = await agent.render_prompt(context=prompt_context)
 
         # Create tools
-        mcp_client = BasicMCPClient(
-            os.getenv("MCP_TRENDRADAR_URL")
-        )
-        mcp_tool_spec = McpToolSpec(
-            client=mcp_client,
-        )
-        tools = await mcp_tool_spec.to_tool_list_async()
+        # Only expose the few news tools the agent actually uses; the MCP offers
+        # ~27 tools and loading them all degrades tool selection. Names must match
+        # the TrendRadar MCP (get_latest_news / get_latest_rss / search_news).
+        tools = []
+        mcp_url = os.getenv("MCP_TRENDRADAR_URL")
+        if mcp_url:
+            try:
+                mcp_tool_spec = McpToolSpec(
+                    client=BasicMCPClient(mcp_url),
+                    allowed_tools=["get_latest_news", "get_latest_rss", "search_news"],
+                )
+                tools = await mcp_tool_spec.to_tool_list_async()
+            except Exception as e:
+                print(f"⚠️  News MCP unavailable ({e}); continuing without news tools")
+        else:
+            print("⚠️  MCP_TRENDRADAR_URL not set; continuing without news tools")
 
         binance_tools = BinanceTools(self.binance_client)
         tools += binance_tools.list_tools()
 
         python_tools = PythonTools()
         tools += python_tools.list_tools()
+
+        macro_tools = MacroTools()
+        tools += macro_tools.list_tools()
 
         print(f"✓ Agent initialized with {len(tools)} trading tools")
         if previous_execution_strategy:
@@ -306,6 +345,14 @@ class TradingFuturesWorkflow(Workflow):
         else:
             print("\n\n⚠️  Warning: Agent did not provide 'Strategy for Next Execution' section")
 
+        # Dynamic cadence: let the agent choose when to run again, clamped to bounds.
+        from apps.genflows.trading_futures.scheduling import decide_next_run_minutes, parse_next_run_minutes
+
+        next_run_minutes = decide_next_run_minutes(
+            parse_next_run_minutes(agent_response), has_open_positions=bool(ev.open_positions)
+        )
+        print(f"⏰ Next run in {next_run_minutes} min (agent-chosen, clamped)")
+
         print("\n" + "=" * 80)
         print("✓ Trading agent execution completed")
         print("=" * 80 + "\n")
@@ -321,5 +368,6 @@ class TradingFuturesWorkflow(Workflow):
                 agent_streaming_output=full_streaming_output,
                 strategy_for_next_execution=strategy_for_next_execution,
                 system_prompt=prompt_system,
+                next_run_minutes=next_run_minutes,
             )
         )

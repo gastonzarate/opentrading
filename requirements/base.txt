@@ -1,43 +1,50 @@
 # Trading & Binance
-python-binance==1.0.32  # Official Binance Python SDK
+python-binance==1.0.37  # Official Binance Python SDK
 
 # Logging
-sentry-sdk==2.45.0
+sentry-sdk==2.64.0
 
 # AI and ML packages
-llama-index==0.14.8
-llama-index-tools-mcp==0.4.3
-llama-index-llms-bedrock-converse==0.12.1
-json-repair==0.54.2
+# We depend on the specific llama-index sub-packages we actually import instead
+# of the `llama-index` umbrella. The umbrella pulls readers-file / cli, which pin
+# pandas<3 and older openai sub-deps, blocking pandas 3 and creating conflicts.
+llama-index-core==0.14.23
+llama-index-tools-mcp==0.4.8
+llama-index-llms-bedrock-converse==0.14.16
+llama-index-llms-openai==0.7.9
+llama-index-utils-workflow==0.11.0
+json-repair==0.61.1
+# NOTE: langfuse held at 3.x. 4.x is an API rewrite that would break
+# apps/tradings/scheduler.py (get_client/create_trace_id/start_as_current_span).
 langfuse==3.10.1
-openinference-instrumentation-llama-index==4.3.9
-ipython==9.7.0
-numpy==2.2.1  # Numerical computing for python_tools
-pandas==2.2.3
+openinference-instrumentation-llama-index==4.4.3
+ipython==9.15.0
+numpy==2.5.0  # Numerical computing for python_tools
+pandas==3.0.3
 ta==0.11.0
-llama-index-utils-workflow==0.5.1
-apscheduler==3.11.1 # Background task scheduler
+apscheduler==3.11.3 # Background task scheduler
 nest_asyncio==1.6.0
 
 # Django
+# NOTE: Django held at 5.2 LTS. 6.0 is a major upgrade to validate separately.
 Django==5.2.7
-django-environ==0.12.0  # https://github.com/joke2k/django-environ
+django-environ==0.14.0  # https://github.com/joke2k/django-environ
 django-filter==25.2
 django-utils-six==2.0
 django-extensions==4.1
 django-cors-headers==4.9.0
 django-easy-health-check==1.0.1 # https://pypi.org/project/django-easy-health-check/
-adrf==0.1.9
+adrf==0.1.13
 
 # Django rest framework
-djangorestframework==3.16.1
+djangorestframework==3.17.1
 djangorestframework-simplejwt==5.5.1
-drf-spectacular==0.28.0  # OpenAPI 3.0 documentation
+drf-spectacular==0.29.0  # OpenAPI 3.0 documentation
 
 # Services
-whitenoise==6.11.0
-gunicorn==22.0.0
+whitenoise==6.12.0
+gunicorn==23.0.0
 
 # Storage
 django-storages==1.14.6
-psycopg[binary]==3.2.10
+psycopg[binary]==3.3.4

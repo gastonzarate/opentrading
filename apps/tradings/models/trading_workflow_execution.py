@@ -71,6 +71,12 @@ class TradingWorkflowExecution(TimeStampedModel):
         help_text="Agent's strategic plan and context for the next execution (agent memory)",
     )
 
+    next_run_minutes = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Minutes until the next run, chosen by the agent and clamped to config bounds",
+    )
+
     # Error Handling
     error_message = models.TextField(blank=True, help_text="Error message if execution failed")
     error_traceback = models.TextField(blank=True, help_text="Full stack trace for debugging")
@@ -114,6 +120,7 @@ class TradingWorkflowExecution(TimeStampedModel):
             agent_response=result.agent_response,
             agent_streaming_output=result.agent_streaming_output,
             strategy_for_next_execution=result.strategy_for_next_execution,
+            next_run_minutes=getattr(result, "next_run_minutes", None),
         )
 
         if error:

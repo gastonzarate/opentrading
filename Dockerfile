@@ -32,5 +32,10 @@ EXPOSE 8000
 
 FROM base AS prod
 
+# collectstatic runs at build time and only needs settings to import. Provide
+# build-time defaults for the settings that are otherwise required from the
+# environment; the running container overrides these via its env_file.
+ENV ENVIRONMENT=build \
+    DEBUG=False
 
 RUN python manage.py collectstatic --noinput  --clear
