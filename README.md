@@ -1,4 +1,4 @@
-# 🦈 Shark Bot - Autonomous Cryptocurrency Trading Agent
+# 🦈 Opentrading - Autonomous Cryptocurrency Trading Agent
 
 An AI-powered autonomous trading bot for Binance Futures that uses Claude AI to analyze market data, execute trades, and manage risk in real-time.
 
@@ -6,9 +6,9 @@ An AI-powered autonomous trading bot for Binance Futures that uses Claude AI to 
 ![Django](https://img.shields.io/badge/django-5.2-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-## 🎯 What is SharkBot?
+## 🎯 What is Opentrading?
 
-Shark Bot is a sophisticated autonomous cryptocurrency trading system that combines advanced AI reasoning with professional risk management. It continuously monitors multiple cryptocurrency markets, performs technical analysis, and executes trades on Binance Futures (USDT-M) with strict risk controls.
+OpenTrading is a sophisticated autonomous cryptocurrency trading system that combines advanced AI reasoning with professional risk management. It continuously monitors multiple cryptocurrency markets, performs technical analysis, and executes trades on Binance Futures (USDT-M) with strict risk controls.
 
 ### Key Features
 
@@ -160,7 +160,7 @@ graph TB
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/macacoai/sharkbot.git
+   git clone https://github.com/gastonzarate/opentrading.git
    cd trading
    ```
 
@@ -221,7 +221,7 @@ graph TB
 
 ### TrendRadar Integration (News Aggregation)
 
-SharkBot integrates with [TrendRadar](https://github.com/sansan0/TrendRadar), a news aggregation tool that monitors 35+ platforms for crypto and trading-related news.
+Opentrading integrates with [TrendRadar](https://github.com/sansan0/TrendRadar), a news aggregation tool that monitors 35+ platforms for crypto and trading-related news.
 
 **What it provides:**
 - Real-time news aggregation from Chinese platforms (Weibo, Douyin, Baidu, etc.)
@@ -355,7 +355,7 @@ The admin interface provides:
 ### Project Structure
 
 ```
-shark-bot/
+opentrading/
 ├── apps/
 │   ├── tradings/          # Trading models, admin, scheduler
 │   ├── genflows/          # AI workflows and agents
