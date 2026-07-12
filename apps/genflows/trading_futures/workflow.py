@@ -19,11 +19,12 @@ from apps.genflows.trading_futures.python_tools import PythonTools
 
 
 # The trading agent's model is env-selectable so we can iterate on it (e.g. run
-# the demo shakedown on Sonnet 4.5 while Sonnet 5 model access is being enabled
-# in Bedrock) without a code change. Defaults to Sonnet 5.
+# the demo shakedown on Sonnet 4.6 while Sonnet 5 / Opus 4.8 model access is
+# being enabled in Bedrock) without a code change. Defaults to Sonnet 5.
 _TRADING_AGENT_MODELS = {
+    "opus-4-8": LLMModel.BEDROCK_CLAUDE_OPUS_4_8,
     "sonnet-5": LLMModel.BEDROCK_CLAUDE_5_SONNET,
-    "sonnet-4-5": LLMModel.BEDROCK_CLAUDE_4_5_SONNET,
+    "sonnet-4-6": LLMModel.BEDROCK_CLAUDE_4_6_SONNET,
     "haiku-4-5": LLMModel.BEDROCK_CLAUDE_4_5_HAIKU,
 }
 

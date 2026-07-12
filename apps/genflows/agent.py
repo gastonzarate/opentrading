@@ -21,8 +21,9 @@ class AgentType(Enum):
 
 
 class LLMModel(Enum):
+    BEDROCK_CLAUDE_OPUS_4_8 = "global.anthropic.claude-opus-4-8"
     BEDROCK_CLAUDE_5_SONNET = "global.anthropic.claude-sonnet-5"
-    BEDROCK_CLAUDE_4_5_SONNET = "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    BEDROCK_CLAUDE_4_6_SONNET = "global.anthropic.claude-sonnet-4-6"
     BEDROCK_CLAUDE_4_5_HAIKU = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
     BEDROCK_DEEPSEEK_R1 = "global.deepseek.r1-v1:0"
     GPT_4_1_MINI = "gpt-4.1-mini"
@@ -36,15 +37,17 @@ class AgentModel:
     # Providers
     OPENAI = [LLMModel.GPT_4_1_MINI]
     BEDROCK = [
+        LLMModel.BEDROCK_CLAUDE_OPUS_4_8,
         LLMModel.BEDROCK_CLAUDE_5_SONNET,
+        LLMModel.BEDROCK_CLAUDE_4_6_SONNET,
         LLMModel.BEDROCK_CLAUDE_4_5_HAIKU,
-        LLMModel.BEDROCK_CLAUDE_4_5_SONNET,
         LLMModel.BEDROCK_DEEPSEEK_R1,
     ]
     MAX_TOKENS = {
+        LLMModel.BEDROCK_CLAUDE_OPUS_4_8: 50000,
         LLMModel.BEDROCK_CLAUDE_5_SONNET: 50000,
+        LLMModel.BEDROCK_CLAUDE_4_6_SONNET: 50000,
         LLMModel.BEDROCK_CLAUDE_4_5_HAIKU: 32786,
-        LLMModel.BEDROCK_CLAUDE_4_5_SONNET: 50000,
         LLMModel.BEDROCK_DEEPSEEK_R1: 32786,
     }
 
