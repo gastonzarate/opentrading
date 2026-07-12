@@ -965,14 +965,54 @@ class BinanceClient:
                 "assets": assets,
             }
         except BinanceAPIException as e:
-            print(f"Error fetching futures balance: {e}")
-            return {
-                "total_wallet_balance": 0,
-                "total_margin_balance": 0,
-                "available_balance": 0,
-                "total_unrealized_pnl": 0,
-                "assets": [],
-            }
+            # The demo/testnet aggregate account endpoint intermittently returns
+            # -1109 (its COIN-M side can be in a broken state). Fall back to the
+            # per-asset balance endpoint, which stays healthy, so an unattended
+            # run doesn't silently stall at the balance gate. The live account is
+            # unaffected — this path only runs when futures_account() errors.
+            print(f"Error fetching futures balance ({e}); falling back to futures_account_balance()")
+            try:
+                balances = self.client.futures_account_balance()
+                total_balance = 0.0
+                available_balance = 0.0
+                total_unrealized_pnl = 0.0
+                assets = []
+                for b in balances:
+                    wallet_balance = float(b.get("balance", 0))
+                    if wallet_balance <= 0:
+                        continue
+                    asset_available = float(b.get("availableBalance", 0))
+                    asset_unrealized = float(b.get("crossUnPnl", 0))
+                    assets.append(
+                        {
+                            "asset": b.get("asset"),
+                            "wallet_balance": wallet_balance,
+                            "unrealized_profit": asset_unrealized,
+                            "margin_balance": wallet_balance + asset_unrealized,
+                            "available_balance": asset_available,
+                        }
+                    )
+                    # USDⓈ-M account: USDT is the margin asset the gate cares about.
+                    if b.get("asset") == "USDT":
+                        total_balance = wallet_balance
+                        available_balance = asset_available
+                        total_unrealized_pnl = asset_unrealized
+                return {
+                    "total_wallet_balance": total_balance,
+                    "total_margin_balance": total_balance + total_unrealized_pnl,
+                    "available_balance": available_balance,
+                    "total_unrealized_pnl": total_unrealized_pnl,
+                    "assets": assets,
+                }
+            except BinanceAPIException as fallback_error:
+                print(f"Fallback futures_account_balance() also failed: {fallback_error}")
+                return {
+                    "total_wallet_balance": 0,
+                    "total_margin_balance": 0,
+                    "available_balance": 0,
+                    "total_unrealized_pnl": 0,
+                    "assets": [],
+                }
 
     def get_available_futures_symbols(self, quote_asset: str = "USDT") -> list:
         """
