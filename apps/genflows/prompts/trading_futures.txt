@@ -194,4 +194,4 @@ Any positions opened: regime, the 2+ signals, the stop and take-profit you set, 
 NEXT_RUN_MINUTES: <integer — when to run again, per the guidance at the top of this prompt>
 ```
 
-The `NEXT_RUN_MINUTES:` line is REQUIRED and must be last. The system parses it and clamps it to safe bounds (it is tightened automatically while a position is open). This summary is fed back to you next execution for continuity.
+The `NEXT_RUN_MINUTES:` line is REQUIRED and must be last. The system parses it and clamps it only to safe outer bounds (1–60 min); within that range YOUR value is respected — including while a position is open, so choose a short interval yourself when you have exposure to manage. This summary is fed back to you next execution for continuity.

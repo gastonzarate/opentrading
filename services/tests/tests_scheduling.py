@@ -17,18 +17,19 @@ def test_parse_returns_none_when_absent_or_bad():
 
 
 def test_decide_passes_through_within_bounds():
-    assert decide_next_run_minutes(20, has_open_positions=False) == 20
+    assert decide_next_run_minutes(20) == 20
 
 
 def test_decide_clamps_to_min_and_max():
-    assert decide_next_run_minutes(0, has_open_positions=False) == STRATEGY.min_run_minutes
-    assert decide_next_run_minutes(9999, has_open_positions=False) == STRATEGY.max_run_minutes
+    assert decide_next_run_minutes(0) == STRATEGY.min_run_minutes
+    assert decide_next_run_minutes(9999) == STRATEGY.max_run_minutes
 
 
-def test_decide_tightens_ceiling_when_position_open():
-    # a long interval is capped tighter while a position is open
-    assert decide_next_run_minutes(60, has_open_positions=True) == STRATEGY.max_run_minutes_with_position
+def test_decide_respects_agent_value_regardless_of_positions():
+    # The agent decides the cadence; an open position no longer tightens the
+    # ceiling. Only the general [min, max] bounds apply.
+    assert decide_next_run_minutes(45) == 45
 
 
 def test_decide_uses_default_when_missing():
-    assert decide_next_run_minutes(None, has_open_positions=False) == STRATEGY.default_run_minutes
+    assert decide_next_run_minutes(None) == STRATEGY.default_run_minutes
