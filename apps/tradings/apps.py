@@ -34,11 +34,20 @@ class TradingsConfig(AppConfig):
         if not settings.DEBUG:
             return
 
-        # Prevent the scheduler from starting twice under the dev-server reloader.
-        # The reloader's parent process does not set RUN_MAIN=true; only its
-        # worker child does. Skipping the parent avoids duplicate schedulers.
-        if os.environ.get("RUN_MAIN") != "true":
-            logger.info("⏭️  Skipping scheduler initialization (not in main process)")
+        # Start the scheduler exactly once, in the single serving process.
+        # Two valid cases:
+        #   - runserver WITH the autoreloader: only the worker child sets
+        #     RUN_MAIN=true; the reloader parent doesn't — skip the parent so we
+        #     don't get two schedulers (the parent's shutdown also races the
+        #     child's thread pool, which surfaced as "cannot schedule new futures
+        #     after shutdown" churn).
+        #   - runserver WITH --noreload: a single process, no RUN_MAIN is set at
+        #     all — start here. (We run --noreload in Docker for exactly this: a
+        #     scheduler-driven bot doesn't want the reloader restarting it.)
+        is_reloader_child = os.environ.get("RUN_MAIN") == "true"
+        is_noreload_server = "runserver" in sys.argv and "--noreload" in sys.argv
+        if not (is_reloader_child or is_noreload_server):
+            logger.info("⏭️  Skipping scheduler initialization (not the serving process)")
             return
 
         # Dynamic cadence: the scheduler fires once immediately and each run
