@@ -13,7 +13,7 @@ async def run_workflow():
     trace_id = langfuse.create_trace_id()
     # pylint: disable=not-context-manager
     with langfuse.start_as_current_span(
-        name="sharkbot-workflow", input=f"Execution {datetime.now().isoformat()}", trace_context={"trace_id": trace_id}
+        name="opentrading-workflow", input=f"Execution {datetime.now().isoformat()}", trace_context={"trace_id": trace_id}
     ):
         langfuse.update_current_trace(user_id="elgastu", session_id=1)
 

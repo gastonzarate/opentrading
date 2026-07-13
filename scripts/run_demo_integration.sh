@@ -6,7 +6,7 @@
 # allowed region.
 #
 #   cron (daily 09:00):
-#     0 9 * * * cd /ABS/PATH/shark-bot && ./scripts/run_demo_integration.sh >> /tmp/shark-demo-it.log 2>&1
+#     0 9 * * * cd /ABS/PATH/opentrading && ./scripts/run_demo_integration.sh >> /tmp/opentrading-demo-it.log 2>&1
 #
 #   macOS launchd: wrap this in a LaunchAgent plist with StartCalendarInterval.
 #
