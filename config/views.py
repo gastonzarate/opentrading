@@ -6,9 +6,12 @@ class HomePageView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Get the current site URL from the request
-        request = self.request
-        scheme = "https" if request.is_secure() else "http"
-        host = request.get_host()
-        context["api_base_url"] = f"{scheme}://{host}"
+        # Same-origin (relative) API base. The dashboard and the REST API are
+        # served by this same app, so a relative base ("") makes the browser use
+        # the page's own origin+scheme. Building an absolute URL here broke access
+        # through an HTTPS tunnel (Cloudflare/ngrok): TLS terminates at the proxy
+        # and Django sees HTTP, so it emitted an http:// base that the HTTPS page
+        # then couldn't fetch (mixed content) — the dashboard loaded but showed no
+        # data. Relative avoids the scheme problem entirely.
+        context["api_base_url"] = ""
         return context
