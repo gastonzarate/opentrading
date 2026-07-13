@@ -632,7 +632,9 @@
           <div class="op-row">
             <span class="op-type" style="color:${typeCol[o.operation_type] || 'var(--text-secondary)'}">${typeLbl[o.operation_type] || o.operation_type}</span>
             <span>${o.currency}${o.quantity ? ' · ' + o.quantity : ''}${o.leverage ? ' · ' + o.leverage + 'x' : ''}</span>
-            <span class="op-entry">${o.entry_price != null ? '@ ' + Number(o.entry_price).toLocaleString('en-US', { maximumFractionDigits: 2 }) : ''}</span>
+            <span class="op-entry">${o.realized_pnl != null
+              ? '<b class="' + (o.realized_pnl >= 0 ? 'pos' : 'neg') + '">' + (o.realized_pnl >= 0 ? '+' : '') + money(o.realized_pnl) + '</b>'
+              : (o.entry_price != null ? '@ ' + Number(o.entry_price).toLocaleString('en-US', { maximumFractionDigits: 2 }) : '')}</span>
             <span class="st st-${o.status}">${o.status}</span>
             <span class="op-time">${fmtTime(o.created_at)}</span>
           </div>`).join('');
