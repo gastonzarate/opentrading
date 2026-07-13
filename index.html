@@ -159,10 +159,11 @@
     .brain pre { background: rgba(0,0,0,.3); padding: 12px; border-radius: 8px; overflow-x: auto; }
 
     /* activity */
-    .op-row { display: grid; grid-template-columns: 90px 1fr auto auto; gap: 12px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--line); font-size: 13px; }
+    .op-row { display: grid; grid-template-columns: 80px 1fr auto auto auto; gap: 12px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--line); font-size: 13px; }
     .op-row:last-child { border-bottom: 0; }
     .op-type { font-weight: 700; font-size: 12px; }
-    .op-time { color: var(--text-muted); font-family: var(--mono); font-size: 11.5px; }
+    .op-entry { color: var(--text-secondary); font-family: var(--mono); font-size: 12px; }
+    .op-time { color: var(--text-muted); font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
     .st { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 5px; }
     .st-SUCCESS { background: rgba(25,158,112,.16); color: var(--good); }
     .st-ERROR { background: rgba(230,103,103,.16); color: var(--critical); }
@@ -628,8 +629,9 @@
           <div class="op-row">
             <span class="op-type" style="color:${typeCol[o.operation_type] || 'var(--text-secondary)'}">${typeLbl[o.operation_type] || o.operation_type}</span>
             <span>${o.currency}${o.quantity ? ' · ' + o.quantity : ''}${o.leverage ? ' · ' + o.leverage + 'x' : ''}</span>
+            <span class="op-entry">${o.entry_price != null ? '@ ' + Number(o.entry_price).toLocaleString('en-US', { maximumFractionDigits: 2 }) : ''}</span>
             <span class="st st-${o.status}">${o.status}</span>
-            <span class="op-time">${fmtHM(o.created_at)}</span>
+            <span class="op-time">${fmtTime(o.created_at)}</span>
           </div>`).join('');
       }
 
