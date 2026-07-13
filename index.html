@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Shark Bot — Trading Dashboard</title>
+  <title>OpenTrading — Trading Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦈</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
@@ -24,27 +24,29 @@
   <style>
     /* ---- Design tokens (dark, validated data-viz palette) ---- */
     :root {
-      --surface-0: #071613;
-      --surface-1: #0b201c;
-      --surface-2: #12312b;
-      --line: rgba(142, 182, 155, .14);
-      --text-primary: #f2fbf5;
-      --text-secondary: #9db6ab;
-      --text-muted: #5f7a70;
+      /* deep-space surfaces (indigo/navy) */
+      --surface-0: #05060f;
+      --surface-1: #0a0d1f;
+      --surface-2: #121737;
+      --line: rgba(130, 142, 220, .15);
+      --text-primary: #eef1ff;
+      --text-secondary: #a6acce;
+      --text-muted: #656b90;
 
-      /* status */
+      /* status — green=profit / red=loss kept for financial semantics */
       --good: #2fd08a;
-      --good-dim: #199e70;
-      --critical: #e66767;
+      --good-dim: #1f9e72;
+      --critical: #ff5c7a;
       --warning: #e0a63a;
 
       /* categorical (validated dark set) */
-      --c-blue: #3987e5;
-      --c-green: #199e70;
-      --c-red: #e66767;
+      --c-blue: #4dd0ff;
+      --c-green: #2fd08a;
+      --c-red: #ff5c7a;
       --c-yellow: #c98500;
 
-      --accent: #2fd08a;
+      /* nebula accent (periwinkle/violet) */
+      --accent: #7c8cff;
       --radius: 18px;
       --radius-sm: 12px;
       --gap: 18px;
@@ -70,8 +72,9 @@
     #bg-veil {
       position: fixed; inset: 0; z-index: 1; pointer-events: none;
       background:
-        radial-gradient(120% 80% at 50% -10%, rgba(47,208,138,.10), transparent 60%),
-        linear-gradient(180deg, rgba(7,22,19,.35) 0%, rgba(7,22,19,.72) 55%, rgba(7,22,19,.92) 100%);
+        radial-gradient(120% 80% at 50% -10%, rgba(124,140,255,.14), transparent 60%),
+        radial-gradient(90% 60% at 85% 20%, rgba(77,208,255,.07), transparent 55%),
+        linear-gradient(180deg, rgba(5,6,15,.35) 0%, rgba(5,6,15,.74) 55%, rgba(5,6,15,.94) 100%);
     }
 
     .wrap { position: relative; z-index: 2; max-width: 1280px; margin: 0 auto; padding: 28px 22px 80px; }
@@ -85,13 +88,13 @@
       padding: 7px 14px; border-radius: 999px; background: rgba(255,255,255,.05);
       border: 1px solid var(--line); color: var(--text-secondary);
     }
-    .status-pill .live { width: 8px; height: 8px; border-radius: 50%; background: var(--good); animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100%{ opacity:1; box-shadow:0 0 0 0 rgba(47,208,138,.5);} 50%{ opacity:.6; box-shadow:0 0 0 6px rgba(47,208,138,0);} }
+    .status-pill .live { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{ opacity:1; box-shadow:0 0 0 0 rgba(124,140,255,.55);} 50%{ opacity:.6; box-shadow:0 0 0 6px rgba(124,140,255,0);} }
 
     /* ---- hero ---- */
     .hero { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap); margin-bottom: 22px; }
     .kpi {
-      background: linear-gradient(180deg, rgba(18,49,43,.66), rgba(11,32,28,.5));
+      background: linear-gradient(180deg, rgba(18,23,55,.66), rgba(10,13,31,.5));
       border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px;
       backdrop-filter: blur(10px); position: relative; overflow: hidden;
     }
@@ -114,7 +117,7 @@
     .section h2::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
 
     .card {
-      background: linear-gradient(180deg, rgba(18,49,43,.55), rgba(11,32,28,.45));
+      background: linear-gradient(180deg, rgba(18,23,55,.55), rgba(10,13,31,.45));
       border: 1px solid var(--line); border-radius: var(--radius); padding: 20px;
       backdrop-filter: blur(8px);
     }
@@ -184,13 +187,13 @@
   </style>
 </head>
 
-<body data-palette="#3987e5,#199e70,#e66767,#c98500">
+<body data-palette="#4dd0ff,#2fd08a,#ff5c7a,#c98500">
   <canvas id="bg-canvas"></canvas>
   <div id="bg-veil"></div>
 
   <div class="wrap">
     <div class="topbar">
-      <div class="brand"><span class="dot"></span> Shark Bot</div>
+      <div class="brand"><span class="dot"></span> OpenTrading</div>
       <div style="display:flex; gap:12px; align-items:center;">
         <span class="updated" id="updated">—</span>
         <span class="status-pill"><span class="live"></span> <span id="bot-status">Conectando…</span></span>
@@ -306,7 +309,7 @@
     let gl = false;
     try { const t = document.createElement('canvas'); gl = !!(t.getContext('webgl2') || t.getContext('webgl')); } catch (e) {}
     if (!gl || reduced) {
-      canvas.style.background = 'radial-gradient(120% 90% at 50% 0%, #0f2e28, #071613 70%)';
+      canvas.style.background = 'radial-gradient(120% 90% at 50% 0%, #1a1f45, #05060f 70%)';
     } else {
       startThree();
     }
@@ -341,9 +344,9 @@
         uPnl: { value: 0 },
         uEnergy: { value: 0.35 },
         uDanger: { value: 0 },
-        uCalm: { value: new THREE.Color('#2fd08a') },
-        uHot: { value: new THREE.Color('#e66767') },
-        uCool: { value: new THREE.Color('#3987e5') },
+        uCalm: { value: new THREE.Color('#6c5cff') },
+        uHot: { value: new THREE.Color('#ff5c7a') },
+        uCool: { value: new THREE.Color('#4dd0ff') },
       };
 
       const mat = new THREE.ShaderMaterial({
@@ -399,7 +402,7 @@
 
       // soft central glow sprite
       const glowGeo = new THREE.SphereGeometry(2.2, 32, 32);
-      const glowMat = new THREE.MeshBasicMaterial({ color: 0x2fd08a, transparent: true, opacity: 0.05 });
+      const glowMat = new THREE.MeshBasicMaterial({ color: 0x6c5cff, transparent: true, opacity: 0.06 });
       const glow = new THREE.Mesh(glowGeo, glowMat);
       scene.add(glow);
 
@@ -427,7 +430,7 @@
         uniforms.uEnergy.value += (s.energy - uniforms.uEnergy.value) * 0.03;
         uniforms.uDanger.value += (s.danger - uniforms.uDanger.value) * 0.03;
         bloom.strength = 0.7 + uniforms.uEnergy.value * 0.6 + uniforms.uDanger.value * 0.5;
-        glowMat.color.set(s.danger > 0.5 ? '#e66767' : '#2fd08a');
+        glowMat.color.set(s.danger > 0.5 ? '#ff5c7a' : '#6c5cff');
         points.rotation.y = t * 0.03;
         points.rotation.x = Math.sin(t * 0.05) * 0.15;
         camera.position.x += (mx * 3 - camera.position.x) * 0.04;
