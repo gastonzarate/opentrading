@@ -100,7 +100,7 @@ binance_tools = BinanceTools(self.binance_client, mode=self.mode)
 
 Run:
 ```bash
-cd /Users/gastonzarate/Documents/Code/shark-bot
+cd /Users/gastonzarate/Documents/Code/opentrading
 python -c "from apps.genflows.trading_futures.workflow import TradingFuturesWorkflow; w = TradingFuturesWorkflow(timeout=10); print('OK', w.mode, type(w.binance_client).__name__)"
 ```
 Expected output contains: `OK LIVE BinanceClient`
@@ -192,7 +192,7 @@ Also find the error-only `TradingWorkflowExecution(...)` instantiation (around l
 
 Run:
 ```bash
-cd /Users/gastonzarate/Documents/Code/shark-bot
+cd /Users/gastonzarate/Documents/Code/opentrading
 python manage.py makemigrations tradings --name add_execution_mode
 python manage.py migrate
 ```
@@ -285,7 +285,7 @@ from .paper_account import *  # NOQA
 - [ ] **Step 3: Generate and apply migration**
 
 ```bash
-cd /Users/gastonzarate/Documents/Code/shark-bot
+cd /Users/gastonzarate/Documents/Code/opentrading
 python manage.py makemigrations tradings --name add_paper_account
 python manage.py migrate
 ```
@@ -400,7 +400,7 @@ from .paper_position import *  # NOQA
 - [ ] **Step 3: Generate and apply migration**
 
 ```bash
-cd /Users/gastonzarate/Documents/Code/shark-bot
+cd /Users/gastonzarate/Documents/Code/opentrading
 python manage.py makemigrations tradings --name add_paper_position
 python manage.py migrate
 ```
@@ -505,7 +505,7 @@ from .paper_operation import *  # NOQA
 - [ ] **Step 3: Generate and apply migration**
 
 ```bash
-cd /Users/gastonzarate/Documents/Code/shark-bot
+cd /Users/gastonzarate/Documents/Code/opentrading
 python manage.py makemigrations tradings --name add_paper_operation
 python manage.py migrate
 ```
@@ -628,7 +628,7 @@ class TestComputeFee:
 
 Run:
 ```bash
-cd /Users/gastonzarate/Documents/Code/shark-bot
+cd /Users/gastonzarate/Documents/Code/opentrading
 pytest services/tests/test_paper_fill_engine.py -v
 ```
 Expected: FAIL with `ModuleNotFoundError: No module named 'services.paper_fill_engine'`.
@@ -1130,7 +1130,7 @@ class TestGetAllOpenPositions(PaperBinanceClientTestBase):
 - [ ] **Step 2: Run tests and verify failures**
 
 ```bash
-cd /Users/gastonzarate/Documents/Code/shark-bot
+cd /Users/gastonzarate/Documents/Code/opentrading
 pytest services/tests/test_paper_binance_client.py -v
 ```
 Expected: FAIL with `ModuleNotFoundError: No module named 'services.paper_binance_client'`.
@@ -1786,7 +1786,7 @@ def test_public_method_signatures_match():
 - [ ] **Step 2: Run the test and verify it passes**
 
 ```bash
-cd /Users/gastonzarate/Documents/Code/shark-bot
+cd /Users/gastonzarate/Documents/Code/opentrading
 pytest services/tests/test_paper_client_contract.py -v
 ```
 Expected: both tests PASS. If any fails, fix the method signature on `PaperBinanceClient` to match the live client (e.g. default values, parameter order).
@@ -2020,7 +2020,7 @@ PAPER_TRADING_ENABLED=false
 
 Run (with the flag off):
 ```bash
-cd /Users/gastonzarate/Documents/Code/shark-bot
+cd /Users/gastonzarate/Documents/Code/opentrading
 PAPER_TRADING_ENABLED=false python -c "from apps.tradings.scheduler import paper_trading_enabled; print(paper_trading_enabled())"
 ```
 Expected: `False`.
@@ -2139,7 +2139,7 @@ Also add `"mode"` to `list_display` just after `status_badge`:
 
 Run:
 ```bash
-cd /Users/gastonzarate/Documents/Code/shark-bot
+cd /Users/gastonzarate/Documents/Code/opentrading
 python manage.py check
 ```
 Expected: `System check identified no issues (0 silenced).`
@@ -2165,7 +2165,7 @@ Extend the existing dashboard API/view to filter by mode. The HTML update adds a
 
 Run:
 ```bash
-cd /Users/gastonzarate/Documents/Code/shark-bot
+cd /Users/gastonzarate/Documents/Code/opentrading
 grep -n "TradingWorkflowExecution" apps/tradings/views/trading_workflow_execution.py
 ```
 
@@ -2222,7 +2222,7 @@ If the dashboard fetches data via `fetch("/api/...")`, add `?mode=${currentMode}
 
 Start the server:
 ```bash
-cd /Users/gastonzarate/Documents/Code/shark-bot
+cd /Users/gastonzarate/Documents/Code/opentrading
 python manage.py runserver
 ```
 Visit `http://localhost:8000/?mode=paper` and `http://localhost:8000/?mode=live`. Verify that no errors are thrown and that the selector toggles the URL. (Paper data will be empty until the paper job runs for the first time.)
@@ -2354,7 +2354,7 @@ class TestFillEngineClosesOnStopLoss(TestCase):
 - [ ] **Step 3: Run the integration tests**
 
 ```bash
-cd /Users/gastonzarate/Documents/Code/shark-bot
+cd /Users/gastonzarate/Documents/Code/opentrading
 pytest apps/tradings/tests/test_paper_workflow.py -v
 ```
 Expected: both tests PASS.

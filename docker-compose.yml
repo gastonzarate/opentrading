@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: shark-bot-postgres-container
+    container_name: opentrading-postgres-container
     env_file: .env
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -14,7 +14,7 @@ services:
       retries: 5
   api:
     env_file: .env
-    container_name: shark-bot-api-container
+    container_name: opentrading-api-container
     build:
       context: .
       dockerfile: Dockerfile
@@ -41,7 +41,7 @@ services:
   # ENABLE_*/REPORT_MODE env vars are ignored by its entrypoint.
   trend-radar:
     image: wantcat/trendradar:latest
-    container_name: shark-bot-trendradar
+    container_name: opentrading-trendradar
     env_file: .env
     environment:
       - RUN_MODE=cron
@@ -58,7 +58,7 @@ services:
   # FastMCP on port 3333; reads config.yaml + the shared output DBs.
   trend-radar-mcp:
     image: wantcat/trendradar-mcp:latest
-    container_name: shark-bot-trendradar-mcp
+    container_name: opentrading-trendradar-mcp
     env_file: .env
     volumes:
       - ./trendradar/config:/app/config
