@@ -29,3 +29,41 @@ def test_calculate_indicators_adds_macd_signal_and_adx():
     # both should produce finite values near the end of the series
     assert out["macd_signal"].notna().iloc[-1]
     assert out["adx"].notna().iloc[-1]
+
+
+def _metrics_client():
+    raw = MagicMock()
+    raw.futures_funding_rate.return_value = [{"fundingRate": "0.00010000"}]
+    return BinanceClient(client=raw), raw
+
+
+def test_open_interest_uses_history_when_available():
+    c, raw = _metrics_client()
+    raw.futures_open_interest_hist.return_value = [
+        {"sumOpenInterest": "100"},
+        {"sumOpenInterest": "300"},
+    ]
+    m = c._get_futures_metrics("BTCUSDT")
+    assert m["oi_latest"] == 300.0
+    assert m["oi_average"] == 200.0  # (100 + 300) / 2
+    assert m["funding_rate"] == 0.01  # 0.0001 * 100
+
+
+def test_open_interest_falls_back_to_snapshot_on_testnet():
+    """History endpoint errors on the demo -> snapshot fallback, no crash, real OI."""
+    c, raw = _metrics_client()
+    raw.futures_open_interest_hist.side_effect = Exception("Invalid Response: ok")
+    raw.futures_open_interest.return_value = {"openInterest": "323872726.9327"}
+    m = c._get_futures_metrics("BTCUSDT")
+    assert m["oi_latest"] == 323872726.9327
+    assert m["oi_average"] == 323872726.9327  # no history -> latest == average
+    assert m["funding_rate"] == 0.01
+
+
+def test_open_interest_defaults_to_zero_when_both_endpoints_fail():
+    c, raw = _metrics_client()
+    raw.futures_open_interest_hist.side_effect = Exception("nope")
+    raw.futures_open_interest.side_effect = Exception("nope")
+    m = c._get_futures_metrics("BTCUSDT")
+    assert m["oi_latest"] == 0
+    assert m["oi_average"] == 0
