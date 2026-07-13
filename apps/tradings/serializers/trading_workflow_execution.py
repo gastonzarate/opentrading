@@ -41,6 +41,7 @@ class TradingWorkflowExecutionSerializer(serializers.ModelSerializer):
             "agent_actions_taken",
             # Temporal context
             "strategy_for_next_execution",
+            "next_run_minutes",
             # Error handling
             "error_message",
             "error_traceback",
