@@ -447,9 +447,14 @@ class BinanceClient:
     def _get_futures_metrics(self, symbol: str) -> dict:
         """
         Fetch Futures Open Interest and Funding Rate. These are supplementary, so
-        each is fetched independently and defaults to 0 on any failure (e.g. the
-        open-interest-history endpoint is unavailable on the demo) — a missing
-        metric must never crash the whole market-data collection.
+        each is fetched independently and must never crash market-data collection.
+
+        OI uses the 24h history endpoint when available (gives latest + average).
+        On venues where that endpoint isn't served — notably the futures demo,
+        where futures_open_interest_hist returns "Invalid Response: ok" — it falls
+        back to the current open-interest snapshot (latest == average) so the agent
+        sees real OI instead of a misleading 0, and no error is logged for the
+        expected-unavailable case.
         """
         oi_latest, oi_average, funding_rate = 0, 0, 0.0
 
@@ -458,8 +463,14 @@ class BinanceClient:
             if oi_stats:
                 oi_latest = float(oi_stats[-1]["sumOpenInterest"])
                 oi_average = sum(float(x["sumOpenInterest"]) for x in oi_stats) / len(oi_stats)
-        except Exception as e:
-            print(f"Error fetching open interest for {symbol}: {e}")
+        except Exception:
+            # History endpoint unavailable (e.g. demo/testnet). Fall back to the
+            # current OI snapshot; only log if that also fails.
+            try:
+                snapshot = self.client.futures_open_interest(symbol=symbol)
+                oi_latest = oi_average = float(snapshot["openInterest"])
+            except Exception as e:
+                print(f"Open interest unavailable for {symbol}: {e}")
 
         try:
             funding_rate_info = self.client.futures_funding_rate(symbol=symbol, limit=1)
