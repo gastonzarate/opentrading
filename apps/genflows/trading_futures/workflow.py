@@ -34,6 +34,35 @@ def trading_agent_model() -> LLMModel:
     return _TRADING_AGENT_MODELS.get(key, LLMModel.BEDROCK_CLAUDE_5_SONNET)
 
 
+def annotate_open_time(open_positions: list) -> list:
+    """
+    Attach ``opened_at`` (ISO string) to each open position from the DB.
+
+    Binance's position payload doesn't include when a position was opened, so we
+    correlate each position with the most recent successful OPEN operation for its
+    currency + side and expose that timestamp for the dashboard. Runs on both
+    testnet and mainnet (it only reads the recorded operation). Leaves opened_at
+    absent if there's no matching operation (e.g. a position opened outside the bot).
+    """
+    from tradings.models import TradingOperation
+
+    for p in open_positions:
+        currency = str(p.get("symbol", "")).replace("USDT", "")
+        op_type = "OPEN_LONG" if p.get("side") == "LONG" else "OPEN_SHORT"
+        op = (
+            TradingOperation.objects.filter(
+                currency=currency,
+                operation_type=op_type,
+                status=TradingOperation.Status.SUCCESS,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if op:
+            p["opened_at"] = op.created_at.isoformat()
+    return open_positions
+
+
 def annotate_recorded_protection(open_positions: list) -> list:
     """
     Surface the SL/TP recorded at entry onto open positions that report none.
@@ -267,6 +296,8 @@ class TradingFuturesWorkflow(Workflow):
         # visible, so we must not mask a genuinely unprotected position.
         if self._is_testnet:
             open_positions = await sync_to_async(annotate_recorded_protection)(open_positions)
+        # Attach opened_at (from the DB) for the dashboard — mainnet and testnet.
+        open_positions = await sync_to_async(annotate_open_time)(open_positions)
         await ctx.store.set("open_positions", open_positions)
 
         # Get daily performance metrics

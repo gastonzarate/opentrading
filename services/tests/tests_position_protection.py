@@ -53,3 +53,23 @@ def test_no_recorded_op_leaves_position_unprotected():
     out = annotate_recorded_protection(positions)
     # No matching operation -> genuinely reported as unprotected (no masking).
     assert out[0]["stop_loss_orders"] == []
+
+
+@pytest.mark.django_db
+def test_annotate_open_time_attaches_opened_at():
+    from apps.genflows.trading_futures.workflow import annotate_open_time
+    op = TradingOperation.objects.create(
+        operation_type=TradingOperation.OperationType.OPEN_LONG,
+        status=TradingOperation.Status.SUCCESS,
+        currency="BTC",
+    )
+    positions = [{"symbol": "BTCUSDT", "side": "LONG"}]
+    out = annotate_open_time(positions)
+    assert out[0]["opened_at"] == op.created_at.isoformat()
+
+
+@pytest.mark.django_db
+def test_annotate_open_time_no_op_leaves_absent():
+    from apps.genflows.trading_futures.workflow import annotate_open_time
+    out = annotate_open_time([{"symbol": "ETHUSDT", "side": "SHORT"}])
+    assert "opened_at" not in out[0]

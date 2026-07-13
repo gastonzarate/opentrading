@@ -134,7 +134,9 @@
     .side-LONG { background: rgba(25,158,112,.18); color: var(--good); }
     .side-SHORT { background: rgba(230,103,103,.18); color: var(--critical); }
     .pos-row { display: flex; justify-content: space-between; font-size: 13px; margin: 6px 0; color: var(--text-secondary); }
-    .pos-row b { color: var(--text-primary); font-family: var(--mono); font-weight: 600; }
+    .pos-row b { color: var(--text-primary); font-family: var(--mono); font-weight: 600; text-align: right; }
+    .pos-row .dim { color: var(--text-muted); font-weight: 500; }
+    .tag-note { color: var(--accent); font-size: 10.5px; font-weight: 600; }
     .liq-gauge { height: 7px; border-radius: 999px; background: rgba(255,255,255,.07); margin-top: 12px; overflow: hidden; }
     .liq-fill { height: 100%; border-radius: 999px; }
     .liq-label { font-size: 11px; color: var(--text-muted); margin-top: 6px; display:flex; justify-content:space-between; }
@@ -467,6 +469,15 @@
       const parseTs = (s) => { s = String(s || '').replace(' ', 'T'); if (!/[zZ]|[+-]\d\d:?\d\d$/.test(s)) s += 'Z'; return new Date(s); };
       const fmtTime = (iso) => parseTs(iso).toLocaleString('es', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
       const fmtHM = (iso) => parseTs(iso).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+      const fmtAgo = (iso) => {
+        const ms = Date.now() - parseTs(iso).getTime();
+        if (ms < 0 || isNaN(ms)) return '';
+        const m = Math.floor(ms / 60000);
+        if (m < 60) return 'hace ' + m + 'm';
+        const h = Math.floor(m / 60);
+        if (h < 24) return 'hace ' + h + 'h ' + (m % 60) + 'm';
+        return 'hace ' + Math.floor(h / 24) + 'd';
+      };
 
       const CSS = getComputedStyle(document.documentElement);
       const col = (n) => CSS.getPropertyValue(n).trim();
@@ -588,18 +599,42 @@
         el.innerHTML = ps.map(p => {
           const uPnl = Number(p.unrealized_pnl) || 0;
           const entry = Number(p.entry_price) || 0, mark = Number(p.mark_price) || 0, liq = Number(p.liquidation_price) || 0;
+          const qty = Math.abs(Number(p.position_amount) || 0);
+          const notional = qty * mark;
+          const margin = Number(p.position_initial_margin) || 0;
+          // uPnL as % of the margin actually committed (return on margin)
+          const uPnlPct = margin ? uPnl / margin * 100 : null;
           const liqDist = mark && liq ? Math.abs(mark - liq) / mark * 100 : null;
-          const risk = liqDist == null ? 0 : Math.max(4, Math.min(100, 100 - liqDist * 5)); // closer to liq => fuller/redder
+          const risk = liqDist == null ? 0 : Math.max(4, Math.min(100, 100 - liqDist * 5));
           const riskCol = risk > 66 ? col('--critical') : risk > 33 ? col('--warning') : col('--good-dim');
-          const hasSL = (p.stop_loss_orders || []).length > 0;
+          const isLong = p.side === 'LONG';
+          const sl = (p.stop_loss_orders || [])[0];
+          const tp = (p.take_profit_orders || [])[0];
+          const slPrice = sl ? Number(sl.stop_price) || 0 : 0;
+          const tpPrice = tp ? Number(tp.stop_price) || 0 : 0;
+          // distance from current mark to the SL/TP trigger, as %
+          const slDist = sl && mark ? (mark - slPrice) / mark * 100 : null;   // long: positive = SL below
+          const tpDist = tp && mark ? (tpPrice - mark) / mark * 100 : null;
+          // rough risk if SL hits: qty * |entry - SL|
+          const slRisk = sl && entry ? qty * Math.abs(entry - slPrice) : null;
+          const openedTxt = p.opened_at ? fmtTime(p.opened_at) + ' · ' + fmtAgo(p.opened_at) : '—';
+          const recorded = sl && sl.source ? ' <span class="tag-note">(registrado)</span>' : '';
           return `<div class="card pos-card">
-            <div class="pos-head"><span class="sym">${p.symbol}</span><span class="side-tag side-${p.side}">${p.side}</span></div>
-            <div class="pos-row"><span>uPnL</span><b class="${uPnl >= 0 ? 'pos' : 'neg'}">${(uPnl >= 0 ? '+' : '') + money(uPnl)}</b></div>
-            <div class="pos-row"><span>Entrada / Mark</span><b>${entry.toLocaleString()} / ${mark.toLocaleString()}</b></div>
-            <div class="pos-row"><span>Tamaño · Lev</span><b>${p.position_amount} · ${p.leverage}x</b></div>
-            <div class="pos-row"><span>Stop loss</span><b class="${hasSL ? 'pos' : 'neg'}">${hasSL ? '✓ activo' : '✗ sin SL'}</b></div>
+            <div class="pos-head">
+              <span class="sym">${p.symbol}</span>
+              <span class="side-tag side-${p.side}">${p.side}${p.leverage ? ' ' + p.leverage + 'x' : ''}</span>
+            </div>
+            <div class="pos-row"><span>uPnL</span><b class="${uPnl >= 0 ? 'pos' : 'neg'}">${(uPnl >= 0 ? '+' : '') + money(uPnl)}${uPnlPct != null ? ' <span class="dim">(' + (uPnlPct >= 0 ? '+' : '') + uPnlPct.toFixed(1) + '%)</span>' : ''}</b></div>
+            <div class="pos-row"><span>Abierta</span><b>${openedTxt}</b></div>
+            <div class="pos-row"><span>Entrada → Mark</span><b>${entry.toLocaleString()} → ${mark.toLocaleString()}</b></div>
+            <div class="pos-row"><span>Tamaño (notional)</span><b>${qty} ${p.symbol.replace('USDT','')} · ${money(notional)}</b></div>
+            <div class="pos-row"><span>Stop loss</span><b class="${sl ? '' : 'neg'}">${sl
+              ? slPrice.toLocaleString() + ' <span class="dim">(' + (slDist != null ? (slDist >= 0 ? '-' : '+') + Math.abs(slDist).toFixed(2) + '% ' + (isLong ? 'abajo' : 'arriba') : '') + ')</span>' + recorded
+              : '✗ sin SL'}</b></div>
+            ${sl && slRisk != null ? `<div class="pos-row"><span>Riesgo si toca SL</span><b class="neg">-${money(slRisk)}</b></div>` : ''}
+            <div class="pos-row"><span>Take profit</span><b>${tp ? tpPrice.toLocaleString() + ' <span class="dim">(+' + (tpDist != null ? Math.abs(tpDist).toFixed(2) + '%' : '') + ')</span>' : '—'}</b></div>
             <div class="liq-gauge"><div class="liq-fill" style="width:${risk}%;background:${riskCol}"></div></div>
-            <div class="liq-label"><span>Riesgo de liquidación</span><span>${liqDist == null ? '—' : 'a ' + liqDist.toFixed(1) + '%'}</span></div>
+            <div class="liq-label"><span>Liquidación ${liq ? '@ ' + liq.toLocaleString() : ''}</span><span>${liqDist == null ? '—' : 'a ' + liqDist.toFixed(1) + '%'}</span></div>
           </div>`;
         }).join('');
       }
