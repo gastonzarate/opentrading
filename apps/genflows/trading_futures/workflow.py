@@ -34,6 +34,60 @@ def trading_agent_model() -> LLMModel:
     return _TRADING_AGENT_MODELS.get(key, LLMModel.BEDROCK_CLAUDE_5_SONNET)
 
 
+def annotate_recorded_protection(open_positions: list) -> list:
+    """
+    Surface the SL/TP recorded at entry onto open positions that report none.
+
+    On the Binance futures demo, conditional (STOP_MARKET/TAKE_PROFIT_MARKET)
+    orders come back as algo orders (algoId) that the open-orders endpoint doesn't
+    list, so ``get_all_open_positions`` reports ``stop_loss_orders: []`` even though
+    the bot placed a stop at entry (and rolls back if it can't). The agent then
+    treats the position as naked and churns close/re-open. This looks up the most
+    recent successful open operation for each unprotected position and attaches the
+    recorded stop/take-profit so the agent sees the real protection state.
+
+    Caller must gate this to testnet — on mainnet the real orders are visible and
+    masking a genuinely missing stop would be dangerous.
+    """
+    from tradings.models import TradingOperation
+
+    for p in open_positions:
+        if p.get("stop_loss_orders"):
+            continue
+        currency = str(p.get("symbol", "")).replace("USDT", "")
+        op_type = "OPEN_LONG" if p.get("side") == "LONG" else "OPEN_SHORT"
+        op = (
+            TradingOperation.objects.filter(
+                currency=currency,
+                operation_type=op_type,
+                status=TradingOperation.Status.SUCCESS,
+                stop_loss_order_id__isnull=False,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if not op:
+            continue
+        p["stop_loss_orders"] = [
+            {
+                "order_id": op.stop_loss_order_id,
+                "type": "STOP_MARKET",
+                "stop_price": op.stop_loss_price,
+                "source": "recorded-at-entry (demo)",
+            }
+        ]
+        if op.take_profit_order_id and not p.get("take_profit_orders"):
+            p["take_profit_orders"] = [
+                {
+                    "order_id": op.take_profit_order_id,
+                    "type": "TAKE_PROFIT_MARKET",
+                    "stop_price": op.take_profit_price,
+                    "source": "recorded-at-entry (demo)",
+                }
+            ]
+    return open_positions
+
+
 class CollectMarketDataEvent(Event):
     """Event for collecting market data for a specific currency."""
 
@@ -98,6 +152,7 @@ class TradingFuturesWorkflow(Workflow):
         # whole loop (orders, SL/TP, user-data stream) can be validated with play
         # money before touching the live account.
         testnet = os.getenv("BINANCE_TESTNET", "false").strip().lower() == "true"
+        self._is_testnet = testnet
         if testnet:
             print("🧪 BINANCE_TESTNET=true — trading against the Binance futures testnet")
 
@@ -205,6 +260,13 @@ class TradingFuturesWorkflow(Workflow):
 
         # Get all open positions (now includes associated orders)
         open_positions = self.binance_client.get_all_open_positions()
+        # On the demo, conditional SL/TP orders return an algoId the open-orders
+        # endpoint can't list, so a bot-protected position looks naked and the agent
+        # churns (close/re-open). Surface the SL/TP we recorded at entry so the
+        # agent sees the protection. Testnet-only: on mainnet the real orders are
+        # visible, so we must not mask a genuinely unprotected position.
+        if self._is_testnet:
+            open_positions = await sync_to_async(annotate_recorded_protection)(open_positions)
         await ctx.store.set("open_positions", open_positions)
 
         # Get daily performance metrics
