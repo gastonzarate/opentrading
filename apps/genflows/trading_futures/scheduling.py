@@ -28,13 +28,13 @@ def parse_next_run_minutes(text: str):
         return None
 
 
-def decide_next_run_minutes(parsed, has_open_positions: bool, config=STRATEGY) -> int:
+def decide_next_run_minutes(parsed, config=STRATEGY) -> int:
     """
     Turn the agent's (possibly missing/out-of-range) request into a bounded delay.
-    While a position is open the ceiling is tighter so the bot never goes dark on it.
+
+    The agent decides the cadence — including while a position is open — and the
+    code only enforces sane outer bounds [min_run_minutes, max_run_minutes] so a
+    missing or absurd value can't hammer the API or leave the bot dark for hours.
     """
     value = parsed if parsed is not None else config.default_run_minutes
-    ceiling = config.max_run_minutes
-    if has_open_positions:
-        ceiling = min(ceiling, config.max_run_minutes_with_position)
-    return max(config.min_run_minutes, min(value, ceiling))
+    return max(config.min_run_minutes, min(value, config.max_run_minutes))

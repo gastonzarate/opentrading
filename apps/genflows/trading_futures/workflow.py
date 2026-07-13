@@ -426,9 +426,7 @@ class TradingFuturesWorkflow(Workflow):
         # Dynamic cadence: let the agent choose when to run again, clamped to bounds.
         from apps.genflows.trading_futures.scheduling import decide_next_run_minutes, parse_next_run_minutes
 
-        next_run_minutes = decide_next_run_minutes(
-            parse_next_run_minutes(agent_response), has_open_positions=bool(ev.open_positions)
-        )
+        next_run_minutes = decide_next_run_minutes(parse_next_run_minutes(agent_response))
         print(f"⏰ Next run in {next_run_minutes} min (agent-chosen, clamped)")
 
         print("\n" + "=" * 80)

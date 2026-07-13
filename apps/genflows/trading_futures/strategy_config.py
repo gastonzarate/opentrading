@@ -46,8 +46,7 @@ class StrategyConfig:
     # level polling — it re-evaluates on the agent's schedule, bounded here.
     default_run_minutes: int = 15          # used when the agent gives no/invalid value
     min_run_minutes: int = 1               # floor (avoid hammering / cost)
-    max_run_minutes: int = 60              # ceiling when flat
-    max_run_minutes_with_position: int = 10  # tighter ceiling while a position is open
+    max_run_minutes: int = 60              # ceiling (agent decides freely below this, positions or not)
 
     # --- Regime filter (ADX-14) --------------------------------------------
     # ADX >= trend threshold  -> trending  -> momentum entries only
