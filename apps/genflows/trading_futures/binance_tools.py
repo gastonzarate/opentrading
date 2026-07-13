@@ -277,6 +277,7 @@ class BinanceTools:
             operation.status = TradingOperation.Status.SUCCESS
             operation.result_data = result
             operation.main_order_id = result.get("orderId")
+            operation.realized_pnl = result.get("realized_pnl")
             operation.save()
 
             return result

@@ -281,3 +281,27 @@ def test_balance_returns_zero_when_both_endpoints_fail():
 
     assert bal["total_wallet_balance"] == 0
     assert bal["assets"] == []
+
+
+# --- realized PnL capture on close -----------------------------------------
+
+def test_close_position_attaches_realized_pnl_from_account_trades():
+    client, raw = make_client()
+    raw.futures_position_information.return_value = [{"symbol": "BTCUSDT", "positionAmt": "0.01"}]
+    raw.futures_create_order.return_value = {"orderId": 555, "status": "FILLED"}
+    raw.futures_account_trades.return_value = [
+        {"orderId": 999, "realizedPnl": "1.00"},   # unrelated order
+        {"orderId": 555, "realizedPnl": "12.50"},  # our close, fill 1
+        {"orderId": 555, "realizedPnl": "-2.50"},  # our close, fill 2
+    ]
+    res = client.close_position("BTC")
+    assert res["realized_pnl"] == pytest.approx(10.0)  # 12.5 - 2.5, unrelated excluded
+
+
+def test_realized_pnl_none_when_no_matching_fills():
+    client, raw = make_client()
+    raw.futures_position_information.return_value = [{"symbol": "BTCUSDT", "positionAmt": "0.01"}]
+    raw.futures_create_order.return_value = {"orderId": 555, "status": "FILLED"}
+    raw.futures_account_trades.return_value = [{"orderId": 111, "realizedPnl": "5.0"}]
+    res = client.close_position("BTC")
+    assert res["realized_pnl"] is None

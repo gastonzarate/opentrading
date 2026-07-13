@@ -51,6 +51,11 @@ class TradingOperation(TimeStampedModel):
     take_profit_order_id = models.CharField(max_length=100, null=True, blank=True)
 
     # Results
+    realized_pnl = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Realized PnL in USDT for a close (from Binance account trades). Null for opens.",
+    )
     result_data = models.JSONField(default=dict, blank=True, help_text="Full response from Binance API")
     error_message = models.TextField(blank=True)
 

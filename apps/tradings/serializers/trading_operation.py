@@ -45,6 +45,7 @@ class TradingOperationSerializer(serializers.ModelSerializer):
             "stop_loss_order_id",
             "take_profit_order_id",
             # Results
+            "realized_pnl",
             "result_data",
             "error_message",
         ]
@@ -83,6 +84,7 @@ class TradingOperationListSerializer(serializers.ModelSerializer):
             "currency",
             "quantity",
             "entry_price",
+            "realized_pnl",
             "error_message",
         ]
         read_only_fields = fields

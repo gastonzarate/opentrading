@@ -1,4 +1,5 @@
 import os
+import time
 from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal
 
 import pandas as pd
@@ -852,7 +853,36 @@ class BinanceClient:
         # Cancel associated SL/TP after flattening.
         self._cancel_symbol_orders(symbol)
 
+        # Attach realized PnL for this close (sum of realizedPnl over the fills of
+        # this order, from account trades). Best-effort: never fail the close on it.
+        close_order["realized_pnl"] = self._realized_pnl_for_order(symbol, close_order.get("orderId"))
+
         return close_order
+
+    def _realized_pnl_for_order(self, symbol: str, order_id, retries: int = 3, delay: float = 0.6) -> float | None:
+        """
+        Realized PnL (USDT) for a filled order, summed over its account-trade fills.
+
+        A market order returns before its fills are queryable via account trades
+        (eventual consistency, especially on the demo), so retry a few times before
+        giving up. Returns None if it still can't be determined (endpoint error, or
+        no matching fills) — the caller must treat a missing value as "unknown",
+        never as zero.
+        """
+        if not order_id:
+            return None
+        for attempt in range(retries):
+            try:
+                trades = self.client.futures_account_trades(symbol=symbol, limit=50)
+            except BinanceAPIException as e:
+                print(f"Could not fetch account trades for realized PnL ({symbol}): {e}")
+                return None
+            fills = [t for t in trades if str(t.get("orderId")) == str(order_id)]
+            if fills:
+                return sum(float(t.get("realizedPnl", 0)) for t in fills)
+            if attempt < retries - 1:
+                time.sleep(delay)
+        return None
 
     def _cancel_symbol_orders(self, symbol: str) -> None:
         """Best-effort cancel of all open orders for a symbol."""
