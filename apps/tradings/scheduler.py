@@ -40,13 +40,15 @@ def schedule_next_run(minutes: int):
         "date",
         run_date=run_date,
         id=JOB_ID,
-        name="Trading Futures Workflow",
+        name=f"Trading Workflow ({active_workflow()})",
         replace_existing=True,
         misfire_grace_time=120,
         coalesce=True,
         max_instances=1,
     )
-    logger.info(f"🗓️  Next trading run scheduled at {run_date.isoformat()} (in {minutes} min)")
+    logger.info(
+        f"🗓️  Next {active_workflow()} run scheduled at {run_date.isoformat()} (in {minutes} min)"
+    )
 
 
 def start_scheduler():
