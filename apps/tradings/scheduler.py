@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 
 JOB_ID = "trading_futures_workflow"
 
+
+def active_workflow() -> str:
+    """Which workflow the scheduler drives. Default keeps current behavior."""
+    return os.getenv("ACTIVE_WORKFLOW", "trading_futures").strip().lower()
+
+
 # Dynamic cadence: there is no fixed interval. Each run self-schedules the next
 # one at the agent-chosen (clamped) delay. This module owns the scheduler so the
 # job can re-arm itself.
@@ -30,7 +36,7 @@ def schedule_next_run(minutes: int):
     """(Re)arm a single one-shot run `minutes` from now."""
     run_date = datetime.now(timezone.utc) + timedelta(minutes=max(0, minutes))
     scheduler.add_job(
-        run_trading_workflow,
+        run_active_workflow,
         "date",
         run_date=run_date,
         id=JOB_ID,
@@ -114,6 +120,24 @@ async def execute_workflow():
     langfuse.flush()
 
     return await handler
+
+
+def run_active_workflow():
+    """Run whichever workflow is active, then self-schedule the next run."""
+    if active_workflow() == "exploit_6":
+        from apps.genflows.exploits.funding_dispersion.workflow import run_exploit_6
+        from apps.genflows.exploits.funding_dispersion.config import FUNDING_DISPERSION_CONFIG as CFG
+        import time as _time
+        start = _time.time()
+        try:
+            run_exploit_6()
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"❌ exploit_6 run failed: {e}", exc_info=True)
+        finally:
+            logger.info(f"✅ exploit_6 run finished in {_time.time()-start:.1f}s")
+            schedule_next_run(CFG.run_minutes)
+        return
+    run_trading_workflow()
 
 
 def run_trading_workflow():
