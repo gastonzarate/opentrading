@@ -37,6 +37,12 @@ class TradingOperation(TimeStampedModel):
     operation_type = models.CharField(max_length=20, choices=OperationType.choices)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     currency = models.CharField(max_length=20, help_text="Base currency symbol (e.g., BTC)")
+    source = models.CharField(
+        max_length=32,
+        default="agent",
+        db_index=True,
+        help_text="Which strategy created this op: 'agent' (general bot) or an exploit id e.g. 'exploit_6'.",
+    )
 
     # Trading Parameters (for Open operations)
     quantity = models.FloatField(null=True, blank=True)
