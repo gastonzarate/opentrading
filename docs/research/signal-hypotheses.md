@@ -288,11 +288,13 @@ frágil. El tema se repite en ~6 ideas independientes.
 ### Shortlist convergida (rankeada por testeable-ya × mecanismo × novedad)
 
 **🟢 Tier A — klines, testeable ya con data que tenemos:**
-1. **Memecoin Co-Movement Percolation** ⭐ — cuando la red de correlaciones de los perps
-   memecoin percola en un "cluster gigante" (todo se mueve junto), el sector se volvió
-   un solo factor de riesgo frágil → precede un drawdown sectorial. Data: perp klines
-   (DOGE/SHIB/PEPE/WIF/BONK/FLOKI…). Mecanismo fuerte (transición de fase de
-   percolación), novel, falsable. **Mejor candidata.**
+1. **Memecoin Co-Movement Percolation** — 🔴 **REFUTADA (2026-07-15).** Klines 1h de
+   DOGE/SHIB/PEPE/FLOKI/BONK/WIF (2024-03→2026-07). Medidas de sincronización: PC1-share,
+   avg-corr, giant-component. El efecto en ventanas solapadas (24h diff −0.185% t=−2.39)
+   murió con muestras NO-solapadas (t=−0.18, IC +0.014, perm p=0.65, OOS inconsistente);
+   a 72h nada. Además falla la premisa: **PC1-share promedia 0.83** (los memecoins ya
+   están casi siempre sincronizados) → no hay estado "disperso" para contrastar. Sin
+   edge. Script: bt_memecoin_percolation.py.
 2. **00:00 UTC Synchronization Impulse** — una flota de bots de TA/grids samplea el
    mismo cierre diario 00:00 UTC → impulso sincronizado fadeable/continuación. Data:
    klines intradía de BTC. La más barata de testear.
