@@ -149,6 +149,15 @@ probar esta semana.**
 
 ### #6 — Blob-fee KL Surprise (rotación risk-on a L2) · 🔵 Tier 3 · Score 3.7
 
+> 🔴 **VERDICTO BACKTEST (2026-07-15): REFUTADA.** Backfill propio del blob-fee horario
+> vía RPC público (Dencun mar-2024 → jul-2026, 20.374 muestras) + klines ARB/OP/BTC.
+> Señal = surprise firmado del log-fee (6h vs baseline 30d). La tesis (blob surprise →
+> L2 *le gana* a BTC) NO se cumple a 24h (IC ~0). En ventanas SOLAPADAS aparecía un
+> efecto inverso fuerte (blob spike → L2 *pierde* vs BTC, 96h t=−6.26), pero el verify
+> con **muestras NO-solapadas** (n=206 independientes) lo evaporó: t=−0.19, IC cambia
+> de signo, OOS H1 +0.90% vs H2 −1.29%. El "efecto" era artefacto de autocorrelación de
+> ventanas solapadas. Sin edge. Scripts: bt_blob_l2.py, bt_blob_verify.py, blob_backfill.py.
+
 **Cómo funciona (fácil).** Desde EIP-4844, el espacio de "blobs" en Ethereum se
 cobra con un mecanismo **totalmente desacoplado** del gas de ejecución. Entonces un
 salto en el fee de blobs es una lectura *limpia* de que los rollups (Base, Arbitrum,
