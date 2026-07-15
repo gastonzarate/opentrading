@@ -31,6 +31,12 @@ class TradingWorkflowExecution(TimeStampedModel):
 
     # Execution Metadata
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.RUNNING, db_index=True)
+    workflow_type = models.CharField(
+        max_length=32,
+        default="trading_futures",
+        db_index=True,
+        help_text="Which workflow produced this execution: 'trading_futures' or an exploit id e.g. 'exploit_6'.",
+    )
     execution_duration = models.FloatField(null=True, blank=True, help_text="Execution time in seconds")
 
     # Workflow Input
