@@ -273,6 +273,43 @@ controlando por desbalance de agresor.
 
 ---
 
+## 4b. Convergencia ronda 2 (630 ideas → 2026-07-15)
+
+Las 630 ideas de la ronda 2 (que se habían cortado sin converger por el límite de
+sesión) se convergieron inline. Distribución por necesidad de data: onchain 405,
+orderbook 132, external 40, **klines 53**. Tras filtrar temas de ronda 1 y las ya
+testeadas quedaron 9 klines-testeables nuevas y 157 onchain nuevas.
+
+**Hallazgo meta:** la frontera nueva es **percolación / colapso de entropía en una
+red** como medidor de fragilidad — cuando un sistema diverso (memecoins, whales,
+blockspace, builders, co-compras same-block) colapsa a un solo modo sincronizado, es
+frágil. El tema se repite en ~6 ideas independientes.
+
+### Shortlist convergida (rankeada por testeable-ya × mecanismo × novedad)
+
+**🟢 Tier A — klines, testeable ya con data que tenemos:**
+1. **Memecoin Co-Movement Percolation** ⭐ — cuando la red de correlaciones de los perps
+   memecoin percola en un "cluster gigante" (todo se mueve junto), el sector se volvió
+   un solo factor de riesgo frágil → precede un drawdown sectorial. Data: perp klines
+   (DOGE/SHIB/PEPE/WIF/BONK/FLOKI…). Mecanismo fuerte (transición de fase de
+   percolación), novel, falsable. **Mejor candidata.**
+2. **00:00 UTC Synchronization Impulse** — una flota de bots de TA/grids samplea el
+   mismo cierre diario 00:00 UTC → impulso sincronizado fadeable/continuación. Data:
+   klines intradía de BTC. La más barata de testear.
+3. **Gold→BTC Rotation Backlog (Little's Law)** — capital safe-haven rota de oro a BTC
+   por un canal congestionado de capacidad finita → un impulso de outperformance del
+   oro drena en drift de BTC con lag. Data: oro (fácil) + BTC. Cross-asset, lag real.
+
+**🔵 Tier B — necesitan data onchain (más esfuerzo, veta rica del mismo tema):**
+4. **Whale / same-block co-buy percolation** — transición de fase en el grafo de flujos
+   de entidades grandes / co-compras same-block → régimen de manía.
+5. **Blockspace Condensation (Bose-Einstein)** — cuando una fracción macroscópica del
+   gas "condensa" en un contrato = euforia terminal de ese token/sector.
+6. **Builder-share entropy collapse** — dominancia de un builder MEV como señal de régimen.
+
+**Recomendación:** testear **#1 (Memecoin Percolation)** primero — es klines, encaja
+con el bot, y es la instancia más limpia y accionable del tema meta.
+
 ## 5. Estado de las validadas (contexto)
 
 | # | Hipótesis | Veredicto | Números |
