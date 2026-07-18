@@ -306,10 +306,21 @@ frágil. El tema se repite en ~6 ideas independientes.
 
 **🔵 Tier B — necesitan data onchain (más esfuerzo, veta rica del mismo tema):**
 4. **Whale / same-block co-buy percolation** — transición de fase en el grafo de flujos
-   de entidades grandes / co-compras same-block → régimen de manía.
-5. **Blockspace Condensation (Bose-Einstein)** — cuando una fracción macroscópica del
-   gas "condensa" en un contrato = euforia terminal de ese token/sector.
-6. **Builder-share entropy collapse** — dominancia de un builder MEV como señal de régimen.
+   de entidades grandes / co-compras same-block → régimen de manía. ⛔ **data-gated**
+   (necesita labels de entidades / tx completas: Dune/Arkham/paid).
+5. **Blockspace Condensation (Bose-Einstein)** — gas condensando en un contrato =
+   euforia terminal. ⛔ **data-gated** (gas por contrato = receipts por tx, inviable vía RPC público a escala).
+6. **Builder-share entropy collapse** — dominancia de builder MEV como régimen. ⛔ **data-gated** (relay data).
+
+### Microestructura order-book (research-only — horizonte HFT, el scheduler no ejecuta)
+Data confirmada gratis en data.binance.vision (aggTrades/bookTicker).
+- **Bet-size round-number mass** — 🔴 **REFUTADO (2026-07-18).** 20 días BTC aggTrades.
+  RoundMass no predice fade (IC ~0; y es solo ~3% del volumen). SizeEntropy→vol tiene
+  IC −0.165 pero SIGNO INVERTIDO y coincidente. Script: bt_betsize.py.
+- QLEC / Iceberg / Layering — sin testear (data más pesada: bookTicker + depth; mismo
+  mal-fit HFT y, dado el patrón 12/12, null casi seguro).
+
+### #7-GPU→DePIN — ⛔ data-gated (historia de precios GPU spot fina/no confiable).
 
 **Recomendación:** testear **#1 (Memecoin Percolation)** primero — es klines, encaja
 con el bot, y es la instancia más limpia y accionable del tema meta.
