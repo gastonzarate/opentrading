@@ -295,12 +295,14 @@ frágil. El tema se repite en ~6 ideas independientes.
    a 72h nada. Además falla la premisa: **PC1-share promedia 0.83** (los memecoins ya
    están casi siempre sincronizados) → no hay estado "disperso" para contrastar. Sin
    edge. Script: bt_memecoin_percolation.py.
-2. **00:00 UTC Synchronization Impulse** — una flota de bots de TA/grids samplea el
-   mismo cierre diario 00:00 UTC → impulso sincronizado fadeable/continuación. Data:
-   klines intradía de BTC. La más barata de testear.
-3. **Gold→BTC Rotation Backlog (Little's Law)** — capital safe-haven rota de oro a BTC
-   por un canal congestionado de capacidad finita → un impulso de outperformance del
-   oro drena en drift de BTC con lag. Data: oro (fácil) + BTC. Cross-asset, lag real.
+2. **00:00 UTC Synchronization Impulse** — 🔴 **REFUTADO (2026-07-18).** BTC 15m 2022→2026.
+   Hay reversión intradía genérica (vela 15m revierte en 1-4h, t=−2.9), pero el CONTROL
+   de las 12:00 revierte igual/más (t=−3.3) → 00:00 no es especial (no es reloj
+   Schelling), y la magnitud (~0.05%) la come el spread. Premisa falsa. Script: bt_midnight_impulse.py.
+3. **Gold→BTC Rotation Backlog (Little's Law)** — 🔴 **REFUTADO (2026-07-18).** PAXG (gold
+   proxy) + BTC diario 2020→2026, 8 combos (k,m). Ninguna significativa ni consistente:
+   IC no-solapado errático, permutación nunca <0.05 (mejor p=0.068 = ruido de comparaciones
+   múltiples), OOS sin robustez. Sin rotación predecible. Script: bt_gold_btc.py.
 
 **🔵 Tier B — necesitan data onchain (más esfuerzo, veta rica del mismo tema):**
 4. **Whale / same-block co-buy percolation** — transición de fase en el grafo de flujos
