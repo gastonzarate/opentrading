@@ -332,6 +332,13 @@ Data confirmada gratis en data.binance.vision (aggTrades/bookTicker).
 - QLEC / Iceberg / Layering — sin testear (data más pesada: bookTicker + depth; mismo
   mal-fit HFT y, dado el patrón 12/12, null casi seguro).
 
+### Critical Slowing Down / Early-Warning Signals (familia genérica) — 🔴 REFUTADA (2026-07-21)
+Cubre ~5 ideas onchain de ronda 2 (fallos judiciales, DePIN util, churn de operadores,
+pre-graduación). Test genérico en BTC: la señal canónica **AR1 (autocorrelación) es nula**
+(IC −0.02, no-solapado −0.03, perm p=0.65). La varianza "predice" vol forward pero es
+**solo vol-clustering** (var ≡ vol actual, partial=NaN) — trivial, no alpha. Las DOS
+meta-familias de ronda 2 (percolación/entropía Y critical-slowing/EWS) refutadas. Script: bt_critical_slowing.py.
+
 ### #7-GPU→DePIN — ⛔ data-gated (historia de precios GPU spot fina/no confiable).
 
 **Recomendación:** testear **#1 (Memecoin Percolation)** primero — es klines, encaja
