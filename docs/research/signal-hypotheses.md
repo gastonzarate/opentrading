@@ -344,6 +344,27 @@ meta-familias de ronda 2 (percolación/entropía Y critical-slowing/EWS) refutad
 **Recomendación:** testear **#1 (Memecoin Percolation)** primero — es klines, encaja
 con el bot, y es la instancia más limpia y accionable del tema meta.
 
+## 4c. Ideas bespoke-data (RWA / DePIN / PoR) — 2026-07-21
+
+Investigadas + testeadas en el loop principal (los 3 agentes de scouting murieron por
+límite de sesión; se hizo directo con DefiLlama/BigQuery/REST).
+
+- **RWA / Tokenized T-Bill Rotation** — 🟡 **DÉBIL / INCONCLUSIVA.** Basket de AUM de
+  treasuries tokenizados (Ondo/Superstate/OpenEden/Matrixdock/Securitize, DefiLlama,
+  ~$9.5B, período maduro desde 2024-07). Señal = flujo diario del AUM (z-score). Signo
+  CORRECTO (inflow a treasuries → cripto abajo) y consistente en BTC-7d (no-solapado
+  IC −0.107, ambas mitades OOS negativas), pero NO significativa (permutación p=0.13) y
+  historia madura corta (~1a). Mecanismo real, señal chica, sub-powered. Revisitar
+  cuando crezca la historia. Script: bt_rwa_rotation.py.
+- **DePIN Usage-Burn** — ⛔ **data-gated.** Los tokens DePIN líquidos (Render/Helium/
+  Akash) no tienen serie de burn/uso en agregadores gratis (404 en DefiLlama fees); vive
+  en APIs por-red (Solana/Cosmos), integración bespoke c/u. Los que sí (Filecoin/GEODNET)
+  son proxies malos o ilíquidos. No testeable limpio sin armado por-red.
+- **Proof-of-Reserves Sawtooth** — ⛔ **data-gated + sub-powered.** No hay historia diaria
+  gratis de reservas de exchanges (DefiLlama da solo snapshot actual); armarla vía BigQuery
+  captura solo ETH (se pierde BTC/otras cadenas), + fechas de PoR bespoke + pocos eventos
+  (~mensuales). No hay ruta limpia.
+
 ## 5. Estado de las validadas (contexto)
 
 | # | Hipótesis | Veredicto | Números |
