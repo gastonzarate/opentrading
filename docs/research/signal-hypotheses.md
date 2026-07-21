@@ -310,7 +310,16 @@ frágil. El tema se repite en ~6 ideas independientes.
    (necesita labels de entidades / tx completas: Dune/Arkham/paid).
 5. **Blockspace Condensation (Bose-Einstein)** — gas condensando en un contrato =
    euforia terminal. ⛔ **data-gated** (gas por contrato = receipts por tx, inviable vía RPC público a escala).
-6. **Builder-share entropy collapse** — dominancia de builder MEV como régimen. ⛔ **data-gated** (relay data).
+6. **Builder-share entropy collapse** — 🔴 **REFUTADO (2026-07-18).** Data conseguida gratis
+   vía RPC (builder auto-identificado en `extraData`, ej. "Titan"). 12 meses, entropía diaria
+   de builders vs fwd ETH vol: IC solapado 0.15-0.20 pero **no-solapado ~0.03, permutación
+   p=0.40**. Otro espejismo de ventanas solapadas. Script: bt_builder_entropy.py.
+
+### Rutas de data GRATIS encontradas (20-agent hunt, 2026-07-18) — desbloquean Tier B
+- **Whale/co-buy percolation + Blockspace condensation** → **BigQuery público** `bigquery-public-data.crypto_ethereum` (genesis→hoy, 1TB/mes gratis, Sandbox sin tarjeta) para flujos y gas-por-contrato; labels vía `dawsbot/eth-labels` (115k, MIT) + `0xB10C/ofac` (point-in-time). Requiere que el usuario arme un GCP Sandbox (no puedo correr queries sin sus credenciales).
+- **#7 Coin-M OI largo** → **Bybit V5 API** (gratis, sin key) — usado para el re-test de #7 arriba.
+- **GPU→DePIN** → ⛔ sigue sin fuente: no hay historia gratis de precios *spot* de GPU (solo list-price coarse vía Wayback Lambda/CoreWeave 2019-23, o empezar a loguear hoy).
+- Whale-labels de pago (Arkham/Nansen) NO hacen falta: BigQuery + repos MIT cubren el caso gratis.
 
 ### Microestructura order-book (research-only — horizonte HFT, el scheduler no ejecuta)
 Data confirmada gratis en data.binance.vision (aggTrades/bookTicker).
@@ -330,7 +339,7 @@ con el bot, y es la instancia más limpia y accionable del tema meta.
 | # | Hipótesis | Veredicto | Números |
 |---|---|---|---|
 | **#6** | Funding Dispersion Collapse | ✅ **Edge chico pero real** (doble-verificado) | Backtest 1,34a: **+44%/año, Sharpe 2.0, maxDD −15%**, neto de fees+funding. Bate 8× al short indiscriminado (Sharpe 0.35) → el timing es real. **PERO** muestra de 1 solo régimen bajista + in-sample → expectativa realista descontada ~15–25%/año. Falta forward-test + muestra alcista. |
-| **#7** | Coin-Margined Convexity | ❌ **No soportado / data insuficiente** | Binance solo da ~20–30d de OI histórico; en esa ventana el signo salió opuesto al thesis. Necesita fuente de OI larga (Coinglass/Coinalyze) para testear en serio. En pausa. |
+| **#7** | Coin-Margined Convexity | 🟡 **CONFIRMADA (2021-23) pero DECAÍDA (2024+) — no operable hoy** | Re-test con **6 años** de OI de **Bybit V5** (gratis, sin key; inverse BTCUSD vs linear BTCUSDT). Tesis confirmada: share coin-M alto → downside forward amplificado. 7d: IC=+0.30, no-solapado +0.30, permutación **p=0.000**, marginal sobre vol actual (parcial +0.25), y aguanta en período maduro (2021-05+, sin data naciente, p=0.000). PERO en **2024+ el IC cae a +0.06 (parcial +0.05, no-solapado +0.004)** → el edge se arbitró/decayó. Mecanismo real, no tradeable ahora. La 1ª vez fallaba por los ~30d de Binance. Scripts: bt_coinm_bybit.py, bt_coinm_verify2.py. |
 
 > Detalle del método de #6/#7 y del estado de la ideación: ver memoria
 > `signal-research-state`.
