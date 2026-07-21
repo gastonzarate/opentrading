@@ -305,11 +305,14 @@ frágil. El tema se repite en ~6 ideas independientes.
    múltiples), OOS sin robustez. Sin rotación predecible. Script: bt_gold_btc.py.
 
 **🔵 Tier B — necesitan data onchain (más esfuerzo, veta rica del mismo tema):**
-4. **Whale / same-block co-buy percolation** — transición de fase en el grafo de flujos
-   de entidades grandes / co-compras same-block → régimen de manía. ⛔ **data-gated**
-   (necesita labels de entidades / tx completas: Dune/Arkham/paid).
-5. **Blockspace Condensation (Bose-Einstein)** — gas condensando en un contrato =
-   euforia terminal. ⛔ **data-gated** (gas por contrato = receipts por tx, inviable vía RPC público a escala).
+4. **Whale flows (proxy: exchange netflow)** — 🔴 **REFUTADO (2026-07-21, BigQuery).** Netflow
+   neto de ETH hacia/desde ~20 wallets de exchange (transactions, 2023-26). IC ~0 en 1/3/7d,
+   no-solapado sin señal, permutación p=0.3-0.8. (La percolación de co-compras a nivel swap
+   —versión completa— no se corrió: query más cara + prior bajísimo.) Script: bq_whale_netflow.py.
+5. **Blockspace Condensation (Bose-Einstein)** — 🔴 **REFUTADO (2026-07-21, BigQuery).** Concentración
+   diaria del gas por contrato (entropy/top1-share/HHI, crypto_ethereum, 2023-26, 107GB escaneados).
+   IC de vol con SIGNO INVERTIDO (más concentración → menos vol forward), IC de retorno nulo en
+   no-solapado (t=−2.03 a 7d se evapora). Script: bq_blockspace.py.
 6. **Builder-share entropy collapse** — 🔴 **REFUTADO (2026-07-18).** Data conseguida gratis
    vía RPC (builder auto-identificado en `extraData`, ej. "Titan"). 12 meses, entropía diaria
    de builders vs fwd ETH vol: IC solapado 0.15-0.20 pero **no-solapado ~0.03, permutación
