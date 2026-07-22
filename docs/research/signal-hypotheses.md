@@ -365,6 +365,26 @@ límite de sesión; se hizo directo con DefiLlama/BigQuery/REST).
   captura solo ETH (se pierde BTC/otras cadenas), + fechas de PoR bespoke + pocos eventos
   (~mensuales). No hay ruta limpia.
 
+## 4d. Insight meta + stablecoin-flow (2026-07-21)
+
+- **Stablecoin Supply Flow → BTC** — 🟡 **DÉBIL/INCONCLUSIVA.** Minteo neto de stablecoins
+  (DefiLlama supply 2020-26) vs BTC forward. 7d: signo correcto (minteo→BTC arriba, +1.37%
+  vs +0.72% resto), OOS ambas mitades positivas, pero perm p=0.099 (no significativa). 3d nulo.
+  Script: bt_stablecoin_flow.py.
+
+**INSIGHT META (el hallazgo más útil de la búsqueda):** las hipótesis se parten en dos
+familias con destinos opuestos:
+- **FLUJO / OFERTA / posicionamiento** (#6 funding-dispersion, #1 timezone, RWA-rotation,
+  stablecoin-flow): señal **REAL** — #6 fuerte, el resto débil-pero-con-signo-correcto-y-OOS-consistente.
+- **ESTRUCTURA / topología de red** (percolación, entropía, mutual-info, critical-slowing-down,
+  builder, blockspace): **NULOS puros** — se evaporan en el verify no-solapado o tienen signo invertido.
+
+⇒ El edge en cripto líquido vive en **flujo/posicionamiento/oferta**, no en estadística de
+topología. Implica: (a) dejar de perseguir ideas "de física de redes"; (b) el próximo tiro con
+mejor prior es un **ENSEMBLE de las señales de flujo independientes** (#6 + stablecoin-flow +
+RWA), que por ser todas signo-correcto y de fuentes distintas podrían sumar (a diferencia de
+#6+#1, que mezcló una señal de flujo con una de régimen y no sumó).
+
 ## 5. Estado de las validadas (contexto)
 
 | # | Hipótesis | Veredicto | Números |
