@@ -385,6 +385,19 @@ mejor prior es un **ENSEMBLE de las señales de flujo independientes** (#6 + sta
 RWA), que por ser todas signo-correcto y de fuentes distintas podrían sumar (a diferencia de
 #6+#1, que mezcló una señal de flujo con una de régimen y no sumó).
 
+## 4e. Flow Ensemble + reality-check de #6 (2026-07-22)
+
+- **Flow Ensemble (#6 + stablecoin-flow)** — 🔴 **NO SUMAN.** Sharpe daily-rebalanced
+  2021-2026: #6-short-only 0.00, stablecoin-dir −0.37, ensemble −0.39 (peor). Las señales
+  de flujo no se apilan. Script: bt_flow_ensemble.py.
+- **Reality-check de #6 (importante):** sobre el ciclo COMPLETO de 5,5 años (con bull runs)
+  #6 como short-only da **Sharpe ~0** (vs 2.0 en la ventana bear 2025-26). Su P&L es
+  **regime-dependiente** — sangra como solo-short en bull markets. La validación de #6 (IC/
+  event-study direccional) es real, pero convertirla en P&L positivo depende del régimen +
+  tailwind de funding + sizing. NO es un always-short money-printer. (El test omitió el
+  funding-credit → subestima algo a #6, pero el punto del régimen se sostiene.) El
+  forward-test en vivo es justo lo que mide si el régimen ACTUAL le sirve.
+
 ## 5. Estado de las validadas (contexto)
 
 | # | Hipótesis | Veredicto | Números |
