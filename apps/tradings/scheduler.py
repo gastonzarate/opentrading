@@ -42,7 +42,7 @@ def schedule_next_run(minutes: int):
         id=JOB_ID,
         name=f"Trading Workflow ({active_workflow()})",
         replace_existing=True,
-        misfire_grace_time=120,
+        misfire_grace_time=None,
         coalesce=True,
         max_instances=1,
     )
