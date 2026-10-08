@@ -39,6 +39,9 @@ class TradingOperationFilter(filters.FilterSet):
     # Currency filter
     currency = filters.CharFilter(lookup_expr="iexact")
 
+    # Strategy source filter ('agent' for the general bot, 'exploit_6', ...)
+    source = filters.CharFilter(lookup_expr="iexact")
+
     # Workflow execution filter
     workflow_execution = filters.UUIDFilter(field_name="workflow_execution__id")
 
@@ -48,6 +51,7 @@ class TradingOperationFilter(filters.FilterSet):
             "operation_type",
             "status",
             "currency",
+            "source",
             "workflow_execution",
             "start_date",
             "end_date",
@@ -120,9 +124,19 @@ class TradingOperationViewSet(viewsets.ReadOnlyModelViewSet):
         close_position_count = queryset.filter(operation_type=TradingOperation.OperationType.CLOSE_POSITION).count()
 
         # Most traded currencies
-        from django.db.models import Count
+        from django.db.models import Count, Sum
 
         top_currencies = list(queryset.values("currency").annotate(count=Count("currency")).order_by("-count")[:5])
+
+        # Realized-PnL aggregates over CLOSED trades (realized_pnl is set).
+        # This is the fair per-strategy performance metric: the two live bots
+        # share ONE testnet account, so account balance is not attributable per
+        # strategy — the sum of a strategy's own closed-trade PnL is.
+        closed = queryset.exclude(realized_pnl__isnull=True)
+        closed_count = closed.count()
+        wins = closed.filter(realized_pnl__gt=0).count()
+        losses = closed.filter(realized_pnl__lt=0).count()
+        realized_total = closed.aggregate(s=Sum("realized_pnl"))["s"] or 0.0
 
         return Response(
             {
@@ -137,5 +151,12 @@ class TradingOperationViewSet(viewsets.ReadOnlyModelViewSet):
                     "close_position": close_position_count,
                 },
                 "top_currencies": top_currencies,
+                # Per-strategy realized performance (combine with ?source=...)
+                "realized_pnl_total": round(realized_total, 2),
+                "closed_trades": closed_count,
+                "wins": wins,
+                "losses": losses,
+                "win_rate_realized": round(wins / closed_count * 100, 1) if closed_count else 0,
+                "avg_realized_pnl": round(realized_total / closed_count, 2) if closed_count else 0,
             }
         )

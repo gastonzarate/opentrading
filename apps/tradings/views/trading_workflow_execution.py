@@ -34,9 +34,12 @@ class TradingWorkflowExecutionFilter(filters.FilterSet):
     # Currency filter (contains)
     currency = filters.CharFilter(field_name="currencies", lookup_expr="contains")
 
+    # Strategy filter ('trading_futures' for the general bot, 'exploit_6', ...)
+    workflow_type = filters.CharFilter(lookup_expr="iexact")
+
     class Meta:
         model = TradingWorkflowExecution
-        fields = ["status", "start_date", "end_date", "date", "date_gte", "date_lte", "currency"]
+        fields = ["status", "start_date", "end_date", "date", "date_gte", "date_lte", "currency", "workflow_type"]
 
 
 class TradingWorkflowExecutionViewSet(viewsets.ReadOnlyModelViewSet):

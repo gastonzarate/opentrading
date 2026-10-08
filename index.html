@@ -4,288 +4,159 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OpenTrading — Trading Dashboard</title>
+  <title>OpenTrading — Comparación de estrategias</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦈</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap"
-    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-      }
-    }
-  </script>
 
   <style>
-    /* ---- Design tokens (dark, validated data-viz palette) ---- */
     :root {
-      /* deep-space surfaces (indigo/navy) */
-      --surface-0: #05060f;
-      --surface-1: #0a0d1f;
-      --surface-2: #121737;
-      --line: rgba(130, 142, 220, .15);
+      --surface-0: #06070f;
+      --surface-1: #0d1022;
+      --surface-2: #141935;
+      --line: rgba(140, 152, 220, .16);
       --text-primary: #eef1ff;
       --text-secondary: #a6acce;
-      --text-muted: #656b90;
+      --text-muted: #6b7195;
 
-      /* status — green=profit / red=loss kept for financial semantics */
-      --good: #2fd08a;
-      --good-dim: #1f9e72;
-      --critical: #ff5c7a;
-      --warning: #e0a63a;
+      --good: #2fd08a;      /* ganancia */
+      --bad: #ff5c7a;       /* pérdida  */
 
-      /* categorical (validated dark set) */
-      --c-blue: #4dd0ff;
-      --c-green: #2fd08a;
-      --c-red: #ff5c7a;
-      --c-yellow: #c98500;
+      /* identidad de cada estrategia (colores no-semánticos, par seguro para daltonismo) */
+      --s6:  #4dd0ff;       /* Estrategia #6 (azul) */
+      --ai:  #f2a93b;       /* Agente IA (ámbar) */
 
-      /* nebula accent (periwinkle/violet) */
-      --accent: #7c8cff;
-      --radius: 18px;
-      --radius-sm: 12px;
-      --gap: 18px;
+      --radius: 18px; --radius-sm: 12px; --gap: 18px;
       --mono: 'JetBrains Mono', ui-monospace, monospace;
       font-family: 'Inter', system-ui, sans-serif;
     }
-
-    @media (prefers-color-scheme: light) {
-      /* dark-first design; keep dark even in light per finance aesthetic */
-    }
-
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     html, body { background: var(--surface-0); color: var(--text-primary); }
-    body { min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
-
-    /* three.js canvas sits behind everything */
-    #bg-canvas {
-      position: fixed; inset: 0; width: 100%; height: 100%;
-      z-index: 0; pointer-events: none;
-    }
-    /* radial vignette so text stays readable over the effect */
-    #bg-veil {
-      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    body { min-height: 100vh; -webkit-font-smoothing: antialiased;
       background:
-        radial-gradient(120% 80% at 50% -10%, rgba(124,140,255,.14), transparent 60%),
-        radial-gradient(90% 60% at 85% 20%, rgba(77,208,255,.07), transparent 55%),
-        linear-gradient(180deg, rgba(5,6,15,.35) 0%, rgba(5,6,15,.74) 55%, rgba(5,6,15,.94) 100%);
+        radial-gradient(120% 80% at 50% -10%, rgba(124,140,255,.10), transparent 55%),
+        radial-gradient(90% 60% at 90% 10%, rgba(77,208,255,.06), transparent 55%),
+        var(--surface-0);
+      background-attachment: fixed; }
+    .wrap { max-width: 1140px; margin: 0 auto; padding: 26px 20px 70px; }
+
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 800; font-size: 20px; letter-spacing: .2px; }
+    .brand .shark { font-size: 22px; }
+    .status-pill { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
+      padding: 6px 13px; border-radius: 999px; background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--text-secondary); }
+    .status-pill .live { width: 8px; height: 8px; border-radius: 50%; background: var(--good); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(47,208,138,.5);} 50%{opacity:.55;box-shadow:0 0 0 6px rgba(47,208,138,0);} }
+    .updated { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
+    .lede { color: var(--text-secondary); font-size: 15px; line-height: 1.55; max-width: 760px; margin: 6px 0 26px; }
+
+    /* head-to-head cards */
+    .h2h { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+    .strat {
+      position: relative; border-radius: var(--radius); padding: 22px 22px 20px;
+      background: linear-gradient(180deg, rgba(20,25,53,.72), rgba(11,14,30,.6));
+      border: 1px solid var(--line); overflow: hidden;
     }
+    .strat::before { content:""; position:absolute; top:0; left:0; right:0; height:4px; background: var(--acc); opacity:.9; }
+    .strat.s6  { --acc: var(--s6); } .strat.ai { --acc: var(--ai); }
+    .strat-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .strat-name { font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 9px; }
+    .strat-name .ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 17px;
+      background: color-mix(in srgb, var(--acc) 22%, transparent); }
+    .lead-badge { font-size: 11.5px; font-weight: 800; padding: 5px 11px; border-radius: 999px; white-space: nowrap;
+      background: color-mix(in srgb, var(--good) 20%, transparent); color: var(--good); border: 1px solid color-mix(in srgb, var(--good) 45%, transparent); }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0 4px; }
+    .chip { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 6px; letter-spacing: .04em;
+      background: color-mix(in srgb, var(--acc) 15%, transparent); color: var(--acc); }
+    .blurb { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin: 10px 0 18px; min-height: 40px; }
 
-    .wrap { position: relative; z-index: 2; max-width: 1280px; margin: 0 auto; padding: 28px 22px 80px; }
+    .big-pnl { font-family: var(--mono); font-size: 40px; font-weight: 600; line-height: 1; }
+    .big-pnl .lbl { display:block; font-family: 'Inter'; font-size: 11.5px; font-weight: 700; letter-spacing:.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+    .pos { color: var(--good); } .neg { color: var(--bad); } .zero { color: var(--text-secondary); }
 
-    /* ---- top bar ---- */
-    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 26px; flex-wrap: wrap; }
-    .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: .3px; font-size: 20px; }
-    .brand .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 18px var(--accent); }
-    .status-pill {
-      display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
-      padding: 7px 14px; border-radius: 999px; background: rgba(255,255,255,.05);
-      border: 1px solid var(--line); color: var(--text-secondary);
-    }
-    .status-pill .live { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100%{ opacity:1; box-shadow:0 0 0 0 rgba(124,140,255,.55);} 50%{ opacity:.6; box-shadow:0 0 0 6px rgba(124,140,255,0);} }
+    .mini-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin: 20px 0 14px; }
+    .mini { background: rgba(255,255,255,.035); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 11px 12px; }
+    .mini .m-val { font-family: var(--mono); font-size: 19px; font-weight: 600; }
+    .mini .m-lbl { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+    .strat-status { font-size: 12.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; padding-top: 4px; border-top: 1px solid var(--line); margin-top: 4px; padding-top: 14px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--acc); flex: none; }
+    .dot.wait { background: var(--text-muted); }
 
-    /* ---- hero ---- */
-    .hero { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap); margin-bottom: 22px; }
-    .kpi {
-      background: linear-gradient(180deg, rgba(18,23,55,.66), rgba(10,13,31,.5));
-      border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px;
-      backdrop-filter: blur(10px); position: relative; overflow: hidden;
-    }
-    .kpi .label { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--text-muted); font-weight: 600; }
-    .kpi .value { font-family: var(--mono); font-size: 30px; font-weight: 600; margin-top: 10px; line-height: 1; }
-    .kpi .sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 8px; }
-    .kpi.big .value { font-size: 34px; }
-    .pos { color: var(--good); } .neg { color: var(--critical); } .muted { color: var(--text-muted); }
+    .section { margin-top: 34px; }
+    .section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .14em; color: var(--text-muted); font-weight: 700; margin-bottom: 6px; }
+    .section .hint { font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px; }
+    .card { background: linear-gradient(180deg, rgba(20,25,53,.55), rgba(11,14,30,.45)); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+    .chart-box { position: relative; height: 300px; }
 
-    .countdown-ring { position: absolute; top: 16px; right: 16px; width: 40px; height: 40px; }
+    .legend { display: flex; gap: 18px; margin-bottom: 12px; flex-wrap: wrap; }
+    .leg { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+    .leg .sw { width: 14px; height: 14px; border-radius: 4px; }
 
-    /* ---- banner ---- */
-    .banner { display: none; align-items: center; gap: 12px; padding: 14px 18px; border-radius: var(--radius-sm);
-      background: rgba(230,103,103,.12); border: 1px solid rgba(230,103,103,.4); color: #ffd9d9; font-weight: 600; margin-bottom: 22px; }
-    .banner.show { display: flex; }
+    .feed { display: flex; flex-direction: column; }
+    .fr { display: grid; grid-template-columns: 12px 120px 1fr auto auto; gap: 12px; align-items: center; padding: 11px 2px; border-bottom: 1px solid var(--line); font-size: 13px; }
+    .fr:last-child { border-bottom: 0; }
+    .fr .who { font-weight: 700; font-size: 12px; }
+    .fr .act { color: var(--text-secondary); }
+    .fr .res { font-family: var(--mono); font-weight: 600; text-align: right; }
+    .fr .tm { color: var(--text-muted); font-family: var(--mono); font-size: 11.5px; text-align: right; white-space: nowrap; }
+    .tag { font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 5px; letter-spacing: .04em; }
+    .tag.SHORT { background: rgba(255,92,122,.16); color: var(--bad); }
+    .tag.LONG { background: rgba(47,208,138,.16); color: var(--good); }
+    .tag.CLOSE { background: rgba(77,208,255,.16); color: var(--s6); }
 
-    /* ---- section ---- */
-    .section { margin-top: 30px; }
-    .section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .14em; color: var(--text-muted); font-weight: 700; margin-bottom: 14px; display:flex; align-items:center; gap:10px; }
-    .section h2::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+    .empty { color: var(--text-muted); font-size: 14px; text-align: center; padding: 26px; }
+    .foot { margin-top: 30px; font-size: 12px; color: var(--text-muted); line-height: 1.6; border-top: 1px solid var(--line); padding-top: 16px; }
 
-    .card {
-      background: linear-gradient(180deg, rgba(18,23,55,.55), rgba(10,13,31,.45));
-      border: 1px solid var(--line); border-radius: var(--radius); padding: 20px;
-      backdrop-filter: blur(8px);
-    }
-    .grid { display: grid; gap: var(--gap); }
-    .g-2 { grid-template-columns: 1fr 1fr; }
-    .g-3 { grid-template-columns: repeat(3, 1fr); }
-    .g-4 { grid-template-columns: repeat(4, 1fr); }
-
-    /* positions */
-    .pos-card { padding: 18px; }
-    .pos-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-    .sym { font-weight: 700; font-size: 17px; }
-    .side-tag { font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 6px; letter-spacing: .05em; }
-    .side-LONG { background: rgba(25,158,112,.18); color: var(--good); }
-    .side-SHORT { background: rgba(230,103,103,.18); color: var(--critical); }
-    .pos-row { display: flex; justify-content: space-between; font-size: 13px; margin: 6px 0; color: var(--text-secondary); }
-    .pos-row b { color: var(--text-primary); font-family: var(--mono); font-weight: 600; text-align: right; }
-    .pos-row .dim { color: var(--text-muted); font-weight: 500; }
-    .tag-note { color: var(--accent); font-size: 10.5px; font-weight: 600; }
-    .liq-gauge { height: 7px; border-radius: 999px; background: rgba(255,255,255,.07); margin-top: 12px; overflow: hidden; }
-    .liq-fill { height: 100%; border-radius: 999px; }
-    .liq-label { font-size: 11px; color: var(--text-muted); margin-top: 6px; display:flex; justify-content:space-between; }
-
-    /* regime chips */
-    .regime-chip { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: rgba(255,255,255,.03); }
-    .regime-chip .r-sym { font-weight: 700; }
-    .r-badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px; display:inline-flex; gap:6px; align-items:center; }
-    .r-TREND { background: rgba(57,135,229,.16); color: #7db4f2; }
-    .r-RANGE { background: rgba(201,133,0,.16); color: #e5c05a; }
-    .r-UNDEFINED { background: rgba(95,122,112,.16); color: var(--text-muted); }
-    .r-meta { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }
-
-    /* charts */
-    .chart-box { position: relative; height: 260px; }
-    .chart-box.sm { height: 200px; }
-    .chart-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
-    .chart-note { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
-
-    /* brain */
-    .brain { max-height: 460px; overflow-y: auto; font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
-    .brain h1,.brain h2,.brain h3 { color: var(--text-primary); margin: 14px 0 8px; font-size: 15px; }
-    .brain strong { color: var(--text-primary); }
-    .brain code { font-family: var(--mono); background: rgba(255,255,255,.06); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
-    .brain pre { background: rgba(0,0,0,.3); padding: 12px; border-radius: 8px; overflow-x: auto; }
-
-    /* activity */
-    .op-row { display: grid; grid-template-columns: 80px 1fr auto auto auto; gap: 12px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--line); font-size: 13px; }
-    .op-row:last-child { border-bottom: 0; }
-    .op-type { font-weight: 700; font-size: 12px; }
-    .op-entry { color: var(--text-secondary); font-family: var(--mono); font-size: 12px; }
-    .op-time { color: var(--text-muted); font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
-    .st { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 5px; }
-    .st-SUCCESS { background: rgba(25,158,112,.16); color: var(--good); }
-    .st-ERROR { background: rgba(230,103,103,.16); color: var(--critical); }
-    .st-PENDING { background: rgba(224,166,58,.16); color: var(--warning); }
-
-    .empty { color: var(--text-muted); font-size: 14px; text-align: center; padding: 30px; }
-    .loading { color: var(--text-muted); font-size: 13px; }
-    .updated { font-size: 11.5px; color: var(--text-muted); font-family: var(--mono); }
-
-    @media (max-width: 980px) {
-      .hero { grid-template-columns: 1fr 1fr; }
-      .g-3, .g-4 { grid-template-columns: 1fr 1fr; }
-      .g-2 { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 560px) {
-      .hero, .g-2, .g-3, .g-4 { grid-template-columns: 1fr; }
+    @media (max-width: 820px) {
+      .h2h { grid-template-columns: 1fr; }
+      .fr { grid-template-columns: 12px 1fr auto; }
+      .fr .act, .fr .tm { display: none; }
     }
   </style>
 </head>
 
-<body data-palette="#4dd0ff,#2fd08a,#ff5c7a,#c98500">
-  <canvas id="bg-canvas"></canvas>
-  <div id="bg-veil"></div>
-
+<body>
   <div class="wrap">
     <div class="topbar">
-      <div class="brand"><span class="dot"></span> OpenTrading</div>
+      <div class="brand"><span class="shark">🦈</span> OpenTrading · Comparación</div>
       <div style="display:flex; gap:12px; align-items:center;">
         <span class="updated" id="updated">—</span>
-        <span class="status-pill"><span class="live"></span> <span id="bot-status">Conectando…</span></span>
+        <span class="status-pill"><span class="live"></span><span id="conn">Conectando…</span></span>
       </div>
     </div>
 
-    <div class="banner" id="cb-banner"></div>
+    <p class="lede">
+      Dos estrategias operan en paralelo sobre una misma cuenta de prueba (demo). Como comparten la cuenta,
+      medimos a cada una por <strong>el dinero que generan sus propias operaciones</strong> — no por el saldo total.
+      Verde es ganancia, rojo es pérdida.
+    </p>
 
-    <!-- HERO -->
-    <div class="hero">
-      <div class="kpi big">
-        <div class="label">Equity total</div>
-        <div class="value" id="k-equity">—</div>
-        <div class="sub" id="k-equity-sub">Wallet + PnL no realizado</div>
-      </div>
-      <div class="kpi">
-        <div class="label">PnL de hoy</div>
-        <div class="value" id="k-pnl">—</div>
-        <div class="sub" id="k-pnl-sub"></div>
-      </div>
-      <div class="kpi">
-        <div class="label">Win rate (hoy)</div>
-        <div class="value" id="k-wr">—</div>
-        <div class="sub" id="k-wr-sub"></div>
-      </div>
-      <div class="kpi">
-        <canvas class="countdown-ring" id="cd-ring" width="40" height="40"></canvas>
-        <div class="label">Próxima corrida</div>
-        <div class="value" id="k-next">—</div>
-        <div class="sub" id="k-next-sub"></div>
-      </div>
+    <!-- HEAD TO HEAD -->
+    <div class="h2h" id="h2h">
+      <div class="strat s6"><div class="empty">Cargando…</div></div>
+      <div class="strat ai"><div class="empty">Cargando…</div></div>
     </div>
 
-    <!-- LIVE STATE -->
+    <!-- CUMULATIVE CHART -->
     <div class="section">
-      <h2>Posiciones abiertas</h2>
-      <div class="grid g-3" id="positions"><div class="empty">Cargando…</div></div>
-    </div>
-
-    <div class="section">
-      <h2>Régimen por símbolo</h2>
-      <div class="grid g-4" id="regime"><div class="empty">Cargando…</div></div>
-    </div>
-
-    <!-- PERFORMANCE -->
-    <div class="section">
-      <h2>Performance</h2>
-      <div class="grid g-2">
-        <div class="card">
-          <div class="chart-title">Equity en el tiempo</div>
-          <div class="chart-note">Balance de wallet por ejecución</div>
-          <div class="chart-box"><canvas id="chart-equity"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="chart-title">PnL diario</div>
-          <div class="chart-note">Verde = ganancia, rojo = pérdida</div>
-          <div class="chart-box"><canvas id="chart-pnl"></canvas></div>
-        </div>
-      </div>
-      <div class="grid g-3" style="margin-top:var(--gap);">
-        <div class="card">
-          <div class="chart-title">Win rate</div>
-          <div class="chart-note">% de trades ganadores por ejecución</div>
-          <div class="chart-box sm"><canvas id="chart-wr"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="chart-title">Drawdown</div>
-          <div class="chart-note">Caída desde el máximo de equity</div>
-          <div class="chart-box sm"><canvas id="chart-dd"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="chart-title">Operaciones por tipo</div>
-          <div class="chart-note">Long / Short / Close</div>
-          <div class="chart-box sm"><canvas id="chart-ops"></canvas></div>
-        </div>
+      <h2>Ganancia acumulada</h2>
+      <div class="hint">La suma del resultado de cada operación cerrada, a lo largo del tiempo. Si la línea sube, la estrategia va ganando.</div>
+      <div class="card">
+        <div class="legend" id="legend"></div>
+        <div class="chart-box"><canvas id="chart"></canvas></div>
       </div>
     </div>
 
-    <!-- BRAIN + ACTIVITY -->
+    <!-- RECENT TRADES -->
     <div class="section">
-      <div class="grid g-2">
-        <div>
-          <h2>Razonamiento del agente</h2>
-          <div class="card"><div class="brain" id="brain"><div class="loading">Cargando…</div></div></div>
-        </div>
-        <div>
-          <h2>Actividad reciente</h2>
-          <div class="card" id="activity"><div class="loading">Cargando…</div></div>
-        </div>
-      </div>
+      <h2>Últimas operaciones</h2>
+      <div class="hint">Las operaciones más recientes de las dos estrategias, en orden.</div>
+      <div class="card"><div class="feed" id="feed"><div class="empty">Cargando…</div></div></div>
+    </div>
+
+    <div class="foot" id="foot">
+      Cuenta demo (testnet) · datos en vivo, se actualizan solos cada 15 s.
     </div>
   </div>
 
@@ -293,437 +164,192 @@
     window.DJANGO_API_BASE_URL = "{{ api_base_url }}";
   </script>
 
-  <!-- ================= three.js ambient background ================= -->
-  <script type="module">
-    import * as THREE from 'three';
-    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const canvas = document.getElementById('bg-canvas');
-
-    // Shared state the effect reacts to (updated by the dashboard).
-    // MUST be defined before startThree() — animate() reads it synchronously.
-    window.__botVisual = { pnl: 0, energy: 0.35, danger: 0 };
-
-    // Feature-detect WebGL on a throwaway canvas (don't consume the real one).
-    let gl = false;
-    try { const t = document.createElement('canvas'); gl = !!(t.getContext('webgl2') || t.getContext('webgl')); } catch (e) {}
-    if (!gl || reduced) {
-      canvas.style.background = 'radial-gradient(120% 90% at 50% 0%, #1a1f45, #05060f 70%)';
-    } else {
-      startThree();
-    }
-
-    function startThree() {
-      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(window.innerWidth, window.innerHeight);
-
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-      camera.position.z = 14;
-
-      // Particle field in a spherical shell, displaced by curl-ish noise.
-      const COUNT = window.innerWidth < 700 ? 2600 : 6500;
-      const positions = new Float32Array(COUNT * 3);
-      const seeds = new Float32Array(COUNT);
-      for (let i = 0; i < COUNT; i++) {
-        const r = 6 + Math.random() * 5;
-        const t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
-        positions[i*3]   = r * Math.sin(p) * Math.cos(t);
-        positions[i*3+1] = r * Math.sin(p) * Math.sin(t);
-        positions[i*3+2] = r * Math.cos(p);
-        seeds[i] = Math.random();
-      }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      geo.setAttribute('seed', new THREE.BufferAttribute(seeds, 1));
-
-      const uniforms = {
-        uTime: { value: 0 },
-        uPnl: { value: 0 },
-        uEnergy: { value: 0.35 },
-        uDanger: { value: 0 },
-        uCalm: { value: new THREE.Color('#6c5cff') },
-        uHot: { value: new THREE.Color('#ff5c7a') },
-        uCool: { value: new THREE.Color('#4dd0ff') },
-      };
-
-      const mat = new THREE.ShaderMaterial({
-        uniforms,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        vertexShader: `
-          attribute float seed;
-          uniform float uTime; uniform float uEnergy; uniform float uDanger;
-          varying float vGlow; varying float vSeed;
-          // hash-based value noise (cheap, GPU-friendly)
-          vec3 hash3(vec3 p){ p=vec3(dot(p,vec3(127.1,311.7,74.7)),dot(p,vec3(269.5,183.3,246.1)),dot(p,vec3(113.5,271.9,124.6))); return -1.0+2.0*fract(sin(p)*43758.5453123); }
-          float noise(vec3 p){ vec3 i=floor(p); vec3 f=fract(p); vec3 u=f*f*(3.0-2.0*f);
-            return mix(mix(mix(dot(hash3(i+vec3(0,0,0)),f-vec3(0,0,0)),dot(hash3(i+vec3(1,0,0)),f-vec3(1,0,0)),u.x),
-                           mix(dot(hash3(i+vec3(0,1,0)),f-vec3(0,1,0)),dot(hash3(i+vec3(1,1,0)),f-vec3(1,1,0)),u.x),u.y),
-                       mix(mix(dot(hash3(i+vec3(0,0,1)),f-vec3(0,0,1)),dot(hash3(i+vec3(1,0,1)),f-vec3(1,0,1)),u.x),
-                           mix(dot(hash3(i+vec3(0,1,1)),f-vec3(0,1,1)),dot(hash3(i+vec3(1,1,1)),f-vec3(1,1,1)),u.x),u.y),u.z); }
-          void main(){
-            vSeed = seed;
-            float spd = 0.08 + uEnergy * 0.35;
-            vec3 p = position;
-            float n = noise(p*0.18 + vec3(uTime*spd, uTime*spd*0.6, seed*10.0));
-            float n2 = noise(p*0.4 - vec3(uTime*spd*0.5));
-            vec3 disp = normalize(p) * (n * (1.2 + uDanger*2.2)) + vec3(n2)* (0.6 + uEnergy);
-            p += disp;
-            vGlow = 0.4 + 0.6*abs(n);
-            vec4 mv = modelViewMatrix * vec4(p,1.0);
-            gl_PointSize = (2.0 + 3.0*seed) * (30.0 / -mv.z);
-            gl_Position = projectionMatrix * mv;
-          }
-        `,
-        fragmentShader: `
-          precision highp float;
-          uniform float uPnl; uniform float uDanger;
-          uniform vec3 uCalm; uniform vec3 uHot; uniform vec3 uCool;
-          varying float vGlow; varying float vSeed;
-          void main(){
-            vec2 c = gl_PointCoord - 0.5;
-            float d = length(c);
-            if (d > 0.5) discard;
-            float alpha = smoothstep(0.5, 0.0, d) * vGlow;
-            // color: calm green -> cool blue (trend) -> red (danger/loss)
-            vec3 col = mix(uCalm, uCool, clamp(uPnl*0.5+0.5, 0.0, 1.0));
-            col = mix(col, uHot, uDanger);
-            gl_FragColor = vec4(col, alpha * 0.7);
-          }
-        `,
-      });
-
-      const points = new THREE.Points(geo, mat);
-      scene.add(points);
-
-      // soft central glow sprite
-      const glowGeo = new THREE.SphereGeometry(2.2, 32, 32);
-      const glowMat = new THREE.MeshBasicMaterial({ color: 0x6c5cff, transparent: true, opacity: 0.06 });
-      const glow = new THREE.Mesh(glowGeo, glowMat);
-      scene.add(glow);
-
-      // bloom
-      const composer = new EffectComposer(renderer);
-      composer.addPass(new RenderPass(scene, camera));
-      const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.9, 0.6, 0.2);
-      composer.addPass(bloom);
-
-      // parallax
-      let mx = 0, my = 0;
-      window.addEventListener('pointermove', (e) => {
-        mx = (e.clientX / window.innerWidth - 0.5);
-        my = (e.clientY / window.innerHeight - 0.5);
-      });
-
-      const clock = new THREE.Clock();
-      function animate() {
-        requestAnimationFrame(animate);
-        const t = clock.getElapsedTime();
-        const s = window.__botVisual;
-        uniforms.uTime.value = t;
-        // smooth toward target state
-        uniforms.uPnl.value += (s.pnl - uniforms.uPnl.value) * 0.03;
-        uniforms.uEnergy.value += (s.energy - uniforms.uEnergy.value) * 0.03;
-        uniforms.uDanger.value += (s.danger - uniforms.uDanger.value) * 0.03;
-        bloom.strength = 0.7 + uniforms.uEnergy.value * 0.6 + uniforms.uDanger.value * 0.5;
-        glowMat.color.set(s.danger > 0.5 ? '#ff5c7a' : '#6c5cff');
-        points.rotation.y = t * 0.03;
-        points.rotation.x = Math.sin(t * 0.05) * 0.15;
-        camera.position.x += (mx * 3 - camera.position.x) * 0.04;
-        camera.position.y += (-my * 3 - camera.position.y) * 0.04;
-        camera.lookAt(0, 0, 0);
-        composer.render();
-      }
-      animate();
-
-      window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        composer.setSize(window.innerWidth, window.innerHeight);
-      });
-    }
-  </script>
-
-  <!-- ================= dashboard data + rendering ================= -->
   <script>
     (function () {
       const BASE = (window.DJANGO_API_BASE_URL || '').replace(/\/$/, '');
-      const api = (path) => fetch(BASE + path, { headers: { 'Accept': 'application/json' } }).then(r => {
-        if (!r.ok) throw new Error(path + ' -> ' + r.status);
-        return r.json();
-      });
+      const api = (p) => fetch(BASE + p, { headers: { Accept: 'application/json' } }).then(r => { if (!r.ok) throw new Error(p + ' ' + r.status); return r.json(); });
       const rows = (d) => Array.isArray(d) ? d : (d && d.results ? d.results : []);
-      const money = (n) => (n == null ? '—' : (n < 0 ? '-$' : '$') + Math.abs(Number(n)).toLocaleString('en-US', { maximumFractionDigits: 2 }));
-      const pct = (n) => (n == null ? '—' : Number(n).toFixed(1) + '%');
-      // Server timestamps are naive UTC (USE_TZ=False, TIME_ZONE=UTC) and come
-      // without a 'Z'/offset (sometimes space-separated). Parse them as UTC so the
-      // browser doesn't read them as local time — that skew was making the
-      // countdown show ~3h ("180 min") instead of the real interval.
+      const money = (n) => { n = Number(n) || 0; return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('es', { maximumFractionDigits: 2 }); };
+      const signed = (n) => (Number(n) > 0 ? '+' : '') + money(n);
+      const cls = (n) => Number(n) > 0 ? 'pos' : Number(n) < 0 ? 'neg' : 'zero';
+      // naive-UTC timestamps (server USE_TZ=False) -> force UTC parse
       const parseTs = (s) => { s = String(s || '').replace(' ', 'T'); if (!/[zZ]|[+-]\d\d:?\d\d$/.test(s)) s += 'Z'; return new Date(s); };
-      const fmtTime = (iso) => parseTs(iso).toLocaleString('es', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const fmtHM = (iso) => parseTs(iso).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-      const fmtAgo = (iso) => {
-        const ms = Date.now() - parseTs(iso).getTime();
-        if (ms < 0 || isNaN(ms)) return '';
-        const m = Math.floor(ms / 60000);
-        if (m < 60) return 'hace ' + m + 'm';
-        const h = Math.floor(m / 60);
-        if (h < 24) return 'hace ' + h + 'h ' + (m % 60) + 'm';
-        return 'hace ' + Math.floor(h / 24) + 'd';
-      };
+      const dayKey = (iso) => parseTs(iso).toISOString().slice(0, 10);
+      const fmtDay = (k) => { const d = new Date(k + 'T00:00:00Z'); return d.toLocaleDateString('es', { month: 'short', day: 'numeric', timeZone: 'UTC' }); };
+      const ago = (iso) => { const ms = Date.now() - parseTs(iso).getTime(); if (isNaN(ms) || ms < 0) return ''; const m = Math.floor(ms / 60000); if (m < 60) return 'hace ' + m + 'm'; const h = Math.floor(m / 60); if (h < 24) return 'hace ' + h + 'h'; return 'hace ' + Math.floor(h / 24) + 'd'; };
 
       const CSS = getComputedStyle(document.documentElement);
       const col = (n) => CSS.getPropertyValue(n).trim();
-      const charts = {};
 
-      // ---------- charts ----------
-      Chart.defaults.color = col('--text-muted');
-      Chart.defaults.font.family = "'Inter', sans-serif";
-      Chart.defaults.borderColor = col('--line');
+      const STRATS = [
+        { key: 's6', source: 'exploit_6', wf: 'exploit_6', name: 'Estrategia #6.2 · Funding', ico: '🎯',
+          inst: ['BTC'], color: col('--s6'),
+          blurb: 'Vende BTC cuando el mercado está eufórico y coordinado apostando a la suba — pero solo si además está en tendencia bajista, y con un stop ajustado (v6.2).' },
+        { key: 'ai', source: 'agent', wf: 'trading_futures', name: 'Agente de IA', ico: '🤖',
+          inst: ['ETH', 'BNB', 'SOL'], color: col('--ai'),
+          blurb: 'Una IA decide cada operación combinando análisis técnico y noticias del mercado. Compra y vende.' },
+      ];
 
-      function baseScales(extra = {}) {
-        return {
-          x: { grid: { display: false }, ticks: { maxTicksLimit: 6, font: { size: 10 } } },
-          y: { grid: { color: col('--line') }, ticks: { font: { size: 10 } }, ...extra },
-        };
+      let chart = null;
+
+      // final-value label at the end of each line
+      const endLabel = {
+        id: 'endLabel',
+        afterDatasetsDraw(c) {
+          const { ctx } = c;
+          c.data.datasets.forEach((ds, i) => {
+            const meta = c.getDatasetMeta(i); if (!meta || meta.hidden || !meta.data.length) return;
+            const pt = meta.data[meta.data.length - 1]; const v = ds.data[ds.data.length - 1];
+            if (v == null) return;
+            ctx.save(); ctx.font = '600 12px JetBrains Mono, monospace'; ctx.fillStyle = ds.borderColor;
+            ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+            ctx.fillText((v >= 0 ? '+$' : '-$') + Math.abs(v).toFixed(0), pt.x - 4, pt.y - 6);
+            ctx.restore();
+          });
+        }
+      };
+
+      function renderCard(s, stats, latest) {
+        const pnl = Number(stats.realized_pnl_total) || 0;
+        const closed = stats.closed_trades || 0;
+        const wr = stats.win_rate_realized || 0;
+        const avg = stats.avg_realized_pnl || 0;
+        const el = document.querySelector('.strat.' + s.key);
+        // status
+        let statusHtml = '<span class="dot wait"></span> Sin corridas todavía';
+        if (latest) {
+          const openN = (latest.open_positions || []).length;
+          const last = latest.created_at ? ago(latest.created_at) : '';
+          statusHtml = openN
+            ? `<span class="dot"></span> Operando ahora · ${openN} posición${openN > 1 ? 'es' : ''} abierta${openN > 1 ? 's' : ''} · última corrida ${last}`
+            : `<span class="dot wait"></span> Esperando el próximo setup · última corrida ${last}`;
+        }
+        el.innerHTML = `
+          <div class="strat-head">
+            <div class="strat-name"><span class="ico">${s.ico}</span> ${s.name}</div>
+            <span class="lead-badge" data-lead="${s.key}" style="display:none">🏆 Va ganando</span>
+          </div>
+          <div class="chips">${s.inst.map(i => `<span class="chip">${i}</span>`).join('')}</div>
+          <div class="blurb">${s.blurb}</div>
+          <div class="big-pnl"><span class="lbl">Resultado acumulado</span><span class="${cls(pnl)}">${signed(pnl)}</span></div>
+          <div class="mini-row">
+            <div class="mini"><div class="m-val">${closed}</div><div class="m-lbl">operaciones</div></div>
+            <div class="mini"><div class="m-val">${closed ? wr.toFixed(0) + '%' : '—'}</div><div class="m-lbl">aciertos</div></div>
+            <div class="mini"><div class="m-val ${cls(avg)}">${closed ? signed(avg) : '—'}</div><div class="m-lbl">prom./op</div></div>
+          </div>
+          <div class="strat-status">${statusHtml}</div>`;
       }
-      const noLegend = { legend: { display: false } };
 
-      function lineChart(id, labels, data, color, fill) {
-        const ctx = document.getElementById(id); if (!ctx) return;
-        if (charts[id]) charts[id].destroy();
-        const g = ctx.getContext('2d').createLinearGradient(0, 0, 0, 240);
-        g.addColorStop(0, color + '55'); g.addColorStop(1, color + '00');
-        charts[id] = new Chart(ctx, {
-          type: 'line',
-          data: { labels, datasets: [{ data, borderColor: color, backgroundColor: fill ? g : 'transparent', fill: !!fill, borderWidth: 2, tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: color }] },
-          options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' }, plugins: noLegend, scales: baseScales() },
-        });
+      function renderLeader(pnls) {
+        document.querySelectorAll('[data-lead]').forEach(b => b.style.display = 'none');
+        const a = pnls.s6, b = pnls.ai;
+        if (a == null || b == null || a === b) return;
+        const win = a > b ? 's6' : 'ai';
+        const badge = document.querySelector('[data-lead="' + win + '"]');
+        if (badge) badge.style.display = '';
       }
 
-      function initCharts(history, ops) {
-        const labels = history.map(h => fmtTime(h.created_at));
-        // equity
-        lineChart('chart-equity', labels, history.map(h => h.equity), col('--c-green'), true);
-        // pnl bars (status color by sign)
-        const pctx = document.getElementById('chart-pnl');
-        if (charts['chart-pnl']) charts['chart-pnl'].destroy();
-        charts['chart-pnl'] = new Chart(pctx, {
-          type: 'bar',
-          data: { labels, datasets: [{ data: history.map(h => h.pnl), backgroundColor: history.map(h => h.pnl >= 0 ? col('--good-dim') : col('--critical')), borderRadius: 3, borderSkipped: false }] },
-          options: { responsive: true, maintainAspectRatio: false, plugins: noLegend, scales: baseScales() },
-        });
-        // win rate
-        lineChart('chart-wr', labels, history.map(h => h.wr), col('--c-blue'), false);
-        // drawdown (from equity)
-        let peak = -Infinity; const dd = history.map(h => { peak = Math.max(peak, h.equity); return peak > 0 ? -((peak - h.equity) / peak * 100) : 0; });
-        lineChart('chart-dd', labels, dd, col('--c-red'), true);
-        // ops donut (categorical: long/short/close, with legend + labels)
-        const octx = document.getElementById('chart-ops');
-        if (charts['chart-ops']) charts['chart-ops'].destroy();
-        charts['chart-ops'] = new Chart(octx, {
-          type: 'doughnut',
-          data: {
-            labels: ['Long', 'Short', 'Close'],
-            datasets: [{ data: [ops.open_long || 0, ops.open_short || 0, ops.close_position || 0], backgroundColor: [col('--c-green'), col('--c-red'), col('--c-blue')], borderColor: col('--surface-1'), borderWidth: 3 }],
+      function renderChart(seriesByStrat, days) {
+        const labels = days.map(fmtDay);
+        const datasets = STRATS.map(s => ({
+          label: s.name, data: seriesByStrat[s.key], borderColor: s.color,
+          backgroundColor: 'transparent', borderWidth: 2.5, tension: .25,
+          pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: s.color, spanGaps: true,
+        }));
+        // legend (always present)
+        document.getElementById('legend').innerHTML = STRATS.map(s =>
+          `<span class="leg"><span class="sw" style="background:${s.color}"></span>${s.name}</span>`).join('');
+        if (chart) chart.destroy();
+        chart = new Chart(document.getElementById('chart'), {
+          type: 'line', data: { labels, datasets },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            layout: { padding: { right: 46 } },
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + (c.parsed.y >= 0 ? '+$' : '-$') + Math.abs(c.parsed.y).toFixed(2) } },
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 10 }, color: col('--text-muted') } },
+              y: { grid: { color: col('--line') }, ticks: { font: { size: 10 }, color: col('--text-muted'), callback: (v) => (v >= 0 ? '$' : '-$') + Math.abs(v) } },
+            },
           },
-          options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, color: col('--text-secondary') } } } },
+          plugins: [endLabel],
         });
       }
 
-      // ---------- renderers ----------
-      function renderHero(latest, statsPnl) {
-        const b = latest.balance_info || {}, p = latest.daily_pnl || {};
-        const equity = (Number(b.total_wallet_balance) || 0) + (Number(b.total_unrealized_pnl) || 0);
-        document.getElementById('k-equity').textContent = money(equity);
-        document.getElementById('k-equity-sub').textContent = 'Wallet ' + money(b.total_wallet_balance) + ' · uPnL ' + money(b.total_unrealized_pnl);
-
-        const pnl = Number(p.total_daily_pnl) || 0;
-        const kp = document.getElementById('k-pnl');
-        kp.textContent = (pnl >= 0 ? '+' : '') + money(pnl).replace('$', '$');
-        kp.className = 'value ' + (pnl > 0 ? 'pos' : pnl < 0 ? 'neg' : 'muted');
-        document.getElementById('k-pnl-sub').textContent = (p.trade_count || 0) + ' trades hoy';
-
-        const wr = Number(p.win_rate) || 0;
-        document.getElementById('k-wr').textContent = pct(wr);
-        document.getElementById('k-wr-sub').textContent = (p.winning_trades || 0) + 'W / ' + (p.losing_trades || 0) + 'L';
-
-        // circuit breaker banner (loss vs wallet)
-        const wallet = Number(b.total_wallet_balance) || 0;
-        const lossPct = wallet > 0 && pnl < 0 ? Math.abs(pnl) / wallet * 100 : 0;
-        const banner = document.getElementById('cb-banner');
-        if (lossPct >= 3) { banner.classList.add('show'); banner.textContent = '⚠ Pérdida diaria ' + lossPct.toFixed(1) + '% — cerca del circuit breaker (5%)'; }
-        else banner.classList.remove('show');
-
-        // feed the three.js effect
-        const v = window.__botVisual;
-        if (v) {
-          v.pnl = Math.max(-1, Math.min(1, wallet ? pnl / (wallet * 0.03) : 0));
-          v.danger = lossPct >= 4 ? 1 : lossPct >= 2 ? 0.5 : 0;
-          v.energy = 0.3 + Math.min(0.6, (latest.open_positions || []).length * 0.2);
-        }
-      }
-
-      function countdown(latest) {
-        const mins = latest.next_run_minutes;
-        const last = parseTs(latest.created_at).getTime();
-        const el = document.getElementById('k-next'), sub = document.getElementById('k-next-sub');
-        function tick() {
-          if (mins == null) { el.textContent = 'auto'; sub.textContent = 'el agente decide'; return; }
-          const next = last + mins * 60000;
-          const diff = Math.max(0, next - Date.now());
-          const m = Math.floor(diff / 60000), s = Math.floor((diff % 60000) / 1000);
-          el.textContent = diff <= 0 ? 'ahora' : `${m}:${String(s).padStart(2, '0')}`;
-          sub.textContent = 'cada ' + mins + ' min';
-          // ring
-          const ring = document.getElementById('cd-ring'); const c = ring.getContext('2d');
-          const frac = mins ? 1 - diff / (mins * 60000) : 0;
-          c.clearRect(0, 0, 40, 40); c.lineWidth = 3;
-          c.beginPath(); c.arc(20, 20, 16, 0, Math.PI * 2); c.strokeStyle = col('--line'); c.stroke();
-          c.beginPath(); c.arc(20, 20, 16, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); c.strokeStyle = col('--accent'); c.stroke();
-        }
-        tick(); clearInterval(window.__cd); window.__cd = setInterval(tick, 1000);
-      }
-
-      function renderPositions(latest) {
-        const el = document.getElementById('positions');
-        const ps = latest.open_positions || [];
-        if (!ps.length) { el.innerHTML = '<div class="empty">Sin posiciones abiertas · el bot está esperando un setup</div>'; return; }
-        el.innerHTML = ps.map(p => {
-          const uPnl = Number(p.unrealized_pnl) || 0;
-          const entry = Number(p.entry_price) || 0, mark = Number(p.mark_price) || 0, liq = Number(p.liquidation_price) || 0;
-          const qty = Math.abs(Number(p.position_amount) || 0);
-          const notional = qty * mark;
-          const margin = Number(p.position_initial_margin) || 0;
-          // uPnL as % of the margin actually committed (return on margin)
-          const uPnlPct = margin ? uPnl / margin * 100 : null;
-          const liqDist = mark && liq ? Math.abs(mark - liq) / mark * 100 : null;
-          const risk = liqDist == null ? 0 : Math.max(4, Math.min(100, 100 - liqDist * 5));
-          const riskCol = risk > 66 ? col('--critical') : risk > 33 ? col('--warning') : col('--good-dim');
-          const isLong = p.side === 'LONG';
-          const sl = (p.stop_loss_orders || [])[0];
-          const tp = (p.take_profit_orders || [])[0];
-          const slPrice = sl ? Number(sl.stop_price) || 0 : 0;
-          const tpPrice = tp ? Number(tp.stop_price) || 0 : 0;
-          // distance from current mark to the SL/TP trigger, as %
-          const slDist = sl && mark ? (mark - slPrice) / mark * 100 : null;   // long: positive = SL below
-          const tpDist = tp && mark ? (tpPrice - mark) / mark * 100 : null;
-          // rough risk if SL hits: qty * |entry - SL|
-          const slRisk = sl && entry ? qty * Math.abs(entry - slPrice) : null;
-          const openedTxt = p.opened_at ? fmtTime(p.opened_at) + ' · ' + fmtAgo(p.opened_at) : '—';
-          const recorded = sl && sl.source ? ' <span class="tag-note">(registrado)</span>' : '';
-          return `<div class="card pos-card">
-            <div class="pos-head">
-              <span class="sym">${p.symbol}</span>
-              <span class="side-tag side-${p.side}">${p.side}${p.leverage ? ' ' + p.leverage + 'x' : ''}</span>
-            </div>
-            <div class="pos-row"><span>uPnL</span><b class="${uPnl >= 0 ? 'pos' : 'neg'}">${(uPnl >= 0 ? '+' : '') + money(uPnl)}${uPnlPct != null ? ' <span class="dim">(' + (uPnlPct >= 0 ? '+' : '') + uPnlPct.toFixed(1) + '%)</span>' : ''}</b></div>
-            <div class="pos-row"><span>Abierta</span><b>${openedTxt}</b></div>
-            <div class="pos-row"><span>Entrada → Mark</span><b>${entry.toLocaleString()} → ${mark.toLocaleString()}</b></div>
-            <div class="pos-row"><span>Tamaño (notional)</span><b>${qty} ${p.symbol.replace('USDT','')} · ${money(notional)}</b></div>
-            <div class="pos-row"><span>Stop loss</span><b class="${sl ? '' : 'neg'}">${sl
-              ? slPrice.toLocaleString() + ' <span class="dim">(' + (slDist != null ? (slDist >= 0 ? '-' : '+') + Math.abs(slDist).toFixed(2) + '% ' + (isLong ? 'abajo' : 'arriba') : '') + ')</span>' + recorded
-              : '✗ sin SL'}</b></div>
-            ${sl && slRisk != null ? `<div class="pos-row"><span>Riesgo si toca SL</span><b class="neg">-${money(slRisk)}</b></div>` : ''}
-            <div class="pos-row"><span>Take profit</span><b>${tp ? tpPrice.toLocaleString() + ' <span class="dim">(+' + (tpDist != null ? Math.abs(tpDist).toFixed(2) + '%' : '') + ')</span>' : '—'}</b></div>
-            <div class="liq-gauge"><div class="liq-fill" style="width:${risk}%;background:${riskCol}"></div></div>
-            <div class="liq-label"><span>Liquidación ${liq ? '@ ' + liq.toLocaleString() : ''}</span><span>${liqDist == null ? '—' : 'a ' + liqDist.toFixed(1) + '%'}</span></div>
-          </div>`;
-        }).join('');
-      }
-
-      function renderRegime(latest) {
-        const el = document.getElementById('regime');
-        const md = latest.market_data || {};
-        const syms = Object.keys(md);
-        if (!syms.length) { el.innerHTML = '<div class="empty">Sin datos de mercado</div>'; return; }
-        const icon = { TREND: '📈', RANGE: '↔', UNDEFINED: '∅' };
-        el.innerHTML = syms.map(s => {
-          const m = md[s] || {}; const rg = m.regime || 'UNDEFINED';
-          const adx = m.current_adx != null ? Number(m.current_adx).toFixed(0) : '—';
-          const price = m.current_price != null ? Number(m.current_price).toLocaleString() : '—';
-          return `<div class="regime-chip">
-            <div><div class="r-sym">${s}</div><div class="r-meta">$${price}</div></div>
-            <div style="text-align:right"><span class="r-badge r-${rg}">${icon[rg] || ''} ${rg}</span><div class="r-meta">ADX ${adx}</div></div>
-          </div>`;
-        }).join('');
-      }
-
-      function renderBrain(latest) {
-        const el = document.getElementById('brain');
-        const txt = latest.agent_response || latest.strategy_for_next_execution || '';
-        el.innerHTML = txt ? marked.parse(txt) : '<div class="empty">Sin razonamiento en la última corrida</div>';
-      }
-
-      function renderActivity(ops, execs) {
-        const el = document.getElementById('activity');
-        const items = ops.slice(0, 12);
-        if (!items.length) { el.innerHTML = '<div class="empty">Sin operaciones registradas</div>'; return; }
-        const typeCol = { OPEN_LONG: 'var(--good)', OPEN_SHORT: 'var(--critical)', CLOSE_POSITION: 'var(--c-blue)' };
+      function renderFeed(ops) {
+        const el = document.getElementById('feed');
+        if (!ops.length) { el.innerHTML = '<div class="empty">Sin operaciones todavía</div>'; return; }
+        const bySrc = {}; STRATS.forEach(s => bySrc[s.source] = s);
         const typeLbl = { OPEN_LONG: 'LONG', OPEN_SHORT: 'SHORT', CLOSE_POSITION: 'CLOSE' };
-        el.innerHTML = items.map(o => `
-          <div class="op-row">
-            <span class="op-type" style="color:${typeCol[o.operation_type] || 'var(--text-secondary)'}">${typeLbl[o.operation_type] || o.operation_type}</span>
-            <span>${o.currency}${o.quantity ? ' · ' + o.quantity : ''}${o.leverage ? ' · ' + o.leverage + 'x' : ''}</span>
-            <span class="op-entry">${o.realized_pnl != null
-              ? '<b class="' + (o.realized_pnl >= 0 ? 'pos' : 'neg') + '">' + (o.realized_pnl >= 0 ? '+' : '') + money(o.realized_pnl) + '</b>'
-              : (o.entry_price != null ? '@ ' + Number(o.entry_price).toLocaleString('en-US', { maximumFractionDigits: 2 }) : '')}</span>
-            <span class="st st-${o.status}">${o.status}</span>
-            <span class="op-time">${fmtTime(o.created_at)}</span>
-          </div>`).join('');
+        el.innerHTML = ops.slice(0, 15).map(o => {
+          const s = bySrc[o.source] || { name: o.source || '—', color: col('--text-muted') };
+          const t = typeLbl[o.operation_type] || o.operation_type;
+          const res = o.realized_pnl != null
+            ? `<span class="${cls(o.realized_pnl)}">${signed(o.realized_pnl)}</span>`
+            : (o.entry_price != null ? '<span style="color:var(--text-muted)">@ ' + Number(o.entry_price).toLocaleString('es') + '</span>' : '');
+          return `<div class="fr">
+            <span class="dot" style="background:${s.color}"></span>
+            <span class="who" style="color:${s.color}">${s.name.split('·')[0].trim()}</span>
+            <span class="act"><span class="tag ${t}">${t}</span> ${o.currency || ''}</span>
+            <span class="res">${res}</span>
+            <span class="tm">${o.created_at ? ago(o.created_at) : ''}</span>
+          </div>`;
+        }).join('');
       }
 
-      // ---------- load + poll ----------
-      let latestId = null;
       async function refresh() {
         try {
-          const execList = rows(await api('/executions/?limit=150'));
-          if (!execList.length) { document.getElementById('bot-status').textContent = 'Sin datos'; return; }
-          document.getElementById('bot-status').textContent = 'En vivo';
+          const perStrat = {};
+          for (const s of STRATS) {
+            const stats = await api('/operations/statistics/?source=' + s.source).catch(() => ({}));
+            const closes = rows(await api('/operations/?source=' + s.source + '&limit=500&ordering=created_at').catch(() => []))
+              .filter(o => o.realized_pnl != null);
+            let latest = null;
+            const ex = rows(await api('/executions/?workflow_type=' + s.wf + '&limit=1').catch(() => []));
+            if (ex.length) latest = await api('/executions/' + ex[0].id + '/').catch(() => null);
+            perStrat[s.key] = { s, stats, closes, latest };
+          }
+          document.getElementById('conn').textContent = 'En vivo';
           document.getElementById('updated').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es');
 
-          // history (chronological) from list summaries
-          const history = [...execList].reverse().map(e => ({
-            created_at: e.created_at,
-            equity: (e.summary && e.summary.total_balance) || 0,
-            pnl: (e.summary && e.summary.daily_pnl) || 0,
-            wr: (e.summary && e.summary.win_rate) || 0,
-          }));
+          // cards + leader
+          const pnls = {};
+          STRATS.forEach(s => { const d = perStrat[s.key]; renderCard(s, d.stats, d.latest); pnls[s.key] = Number(d.stats.realized_pnl_total) || 0; });
+          renderLeader(pnls);
 
-          const opStats = (await api('/operations/statistics/').catch(() => ({}))).operations_by_type || {};
-          const opsList = rows(await api('/operations/?limit=30').catch(() => []));
-          initCharts(history, opStats);
-          renderActivity(opsList, execList);
+          // aligned cumulative series over the union of days
+          const daySet = new Set();
+          STRATS.forEach(s => perStrat[s.key].closes.forEach(o => daySet.add(dayKey(o.created_at))));
+          const days = [...daySet].sort();
+          const seriesByStrat = {};
+          STRATS.forEach(s => {
+            const closes = perStrat[s.key].closes;
+            let cum = 0, i = 0;
+            seriesByStrat[s.key] = days.map(day => {
+              while (i < closes.length && dayKey(closes[i].created_at) <= day) { cum += Number(closes[i].realized_pnl) || 0; i++; }
+              return closes.length ? cum : null;
+            });
+          });
+          if (days.length) renderChart(seriesByStrat, days);
+          else document.getElementById('legend').innerHTML = '<div class="empty">Todavía no hay operaciones cerradas para graficar</div>';
 
-          // latest detail (only refetch if changed)
-          const top = execList[0];
-          if (top.id !== latestId) {
-            latestId = top.id;
-            const latest = await api('/executions/' + top.id + '/');
-            renderHero(latest);
-            countdown(latest);
-            renderPositions(latest);
-            renderRegime(latest);
-            renderBrain(latest);
-          }
+          // unified recent feed
+          const recent = rows(await api('/operations/?limit=20&ordering=-created_at').catch(() => []));
+          renderFeed(recent);
         } catch (e) {
           console.error(e);
-          document.getElementById('bot-status').textContent = 'Error de conexión';
+          document.getElementById('conn').textContent = 'Error de conexión';
         }
       }
 
       refresh();
-      let poll = setInterval(refresh, 10000);
+      let poll = setInterval(refresh, 15000);
       document.addEventListener('visibilitychange', () => {
         clearInterval(poll);
-        if (!document.hidden) { refresh(); poll = setInterval(refresh, 10000); }
+        if (!document.hidden) { refresh(); poll = setInterval(refresh, 15000); }
       });
     })();
   </script>
