@@ -28,6 +28,7 @@ class TradingWorkflowExecutionSerializer(serializers.ModelSerializer):
             # Execution metadata
             "status",
             "execution_duration",
+            "workflow_type",
             # Workflow data
             "currencies",
             "balance_info",
@@ -90,6 +91,7 @@ class TradingWorkflowExecutionListSerializer(serializers.ModelSerializer):
             "updated_at",
             "status",
             "execution_duration",
+            "workflow_type",
             "currencies",
             "summary",
         ]

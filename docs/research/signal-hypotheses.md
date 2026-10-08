@@ -1,0 +1,577 @@
+# Libro de hipótesis de señal — OpenTrading
+
+> Documento vivo. Última actualización: 2026-07-14.
+> Objetivo: buscar un **edge informacional** en cripto (no análisis técnico, que ya
+> dio expectativa negativa). Flujo de trabajo: **idear → validar con evidencia →
+> converger → recién ahí decidir si va al bot.** Nada de acá está implementado.
+
+---
+
+## 1. Cómo leer el score
+
+Cada hipótesis se puntúa en 6 dimensiones (0–5) y se pondera. La escala **no** mide
+"cuánto va a ganar" — mide **qué tan buena es la apuesta de dedicarle tiempo a
+backtestearla**. Una idea con score alto es una que, si el edge existe, lo vamos a
+poder *probar rápido, barato y sin autoengaño*.
+
+| Dimensión | Peso | Qué pregunta |
+|---|---|---|
+| **Mecanismo** | 25% | ¿Hay una razón estructural clara de *por qué* debería funcionar? ¿O es data-mining? |
+| **Lag / persistencia** | 20% | ¿Por qué el edge no se arbitra al instante? ¿Hay un retardo estructural que lo sostenga? |
+| **Falsabilidad** | 15% | ¿Se puede *matar* rápido con un test limpio? (una idea que no se puede refutar no sirve) |
+| **Costo de test** | 15% | Inverso al esfuerzo. 5 = data que ya bajamos; 1 = feed nuevo y difícil. |
+| **Novedad / anti-crowding** | 15% | ¿Nadie lo usa? Si medio mundo ya lo mira, el edge ya se pagó. |
+| **Retorno potencial** | 10% | Magnitud plausible del edge *si* es real. |
+
+> **Filtro extra de fit con nuestro bot:** OpenTrading corre en un *scheduler*
+> (minutos), no es un HFT sub-segundo. Las señales de **horas/días** encajan; las de
+> **segundos/minutos** (microestructura pura) pueden ser reales pero **no las podemos
+> ejecutar** con nuestra arquitectura. Eso baja mucho el atractivo práctico de las
+> Tier 2, aunque el score de la idea en sí sea decente.
+
+> **Sobre "cuánto podríamos ganar":** salvo #6 (que ya tiene backtest real), los
+> números de las hipótesis nuevas son **expectativas a priori, NO medidas**. Están
+> para ordenar prioridades, no para creerles. El número real sale recién después de
+> backtestear.
+
+---
+
+## 2. El hallazgo de la ronda 2: la familia "entropía / sorpresa"
+
+De 630 ideas generadas, 359 eran territorio nuevo (fuera de la ronda 1), y
+**convergieron solas a una familia coherente** que no habíamos tocado.
+
+**Tesis unificadora:** *el mercado se rompe justo cuando una distribución que
+normalmente es diversa/ruidosa colapsa a un solo modo.* Una sola timezone operando,
+un solo market-maker mecánico cotizando, una sola narrativa en los launchpads, un
+solo origen de fondeo. **Concentración = fragilidad, y se mide *antes* de que
+reaccione el precio** — con entropía de Shannon, divergencia KL, información mutua o
+entropía de permutación. Es un ángulo que casi nadie usa en cripto retail.
+
+---
+
+## 3. Shortlist rankeada
+
+| # | Hipótesis | Tier | Score | Fit bot | Estado |
+|---|---|---|---|---|---|
+| 2 | Cross-stablecoin Peg Synchronization | 🟢 1 | 4.3 | ✅ alto | ❌ **REFUTADA** (detector coincidente, no predictor) |
+| 1 | Timezone Handoff Volume-Entropy | 🟢 1 | 3.9 | ✅ alto | ⚠️ **DÉBIL PERO REAL** (Sharpe 0.43; sirve de filtro de régimen) |
+| 6 | Blob-fee KL Surprise | 🔵 3 | **3.7** | ✅ alto | media-alta |
+| 3 | Quote-Lifetime Entropy Collapse | 🟡 2 | **3.6** | ⚠️ bajo (HFT) | media |
+| 4 | Iceberg Absorption Surprise | 🟡 2 | **3.5** | ⚠️ bajo (HFT) | media |
+| 7 | GPU-Spot → DePIN Spillover | 🔵 3 | **3.5** | ✅ alto | media-alta |
+| 5 | Depth-Update Coupling (layering) | 🟡 2 | **3.2** | ⚠️ bajo (HFT) | baja-media |
+
+---
+
+## 4. Las hipótesis en detalle
+
+### #2 — Cross-stablecoin Peg Synchronization · 🟢 Tier 1 · Score 4.3
+
+> 🔴 **VERDICTO BACKTEST (2026-07-14): REFUTADA como predictor.** Data 1h 2022–2026,
+> 5 stablecoins. El sanity check pasó (LUNA z=+6.98, SVB/USDC z=+1.60 → *detecta* el
+> estrés), pero el test predictivo falló entero: event-study diff ON−OFF ≈ +0.011%
+> (nulo, no-monotónico), IC continuo −0.007 (signo equivocado), permutación p=0.91,
+> OOS cambia de signo (H1 +0.023 / H2 −0.040). **Es un detector coincidente de
+> estrés, no un predictor adelantado** — para cuando los pegs se sincronizan, la vol
+> ya está acá. Útil como confirmación risk-off, NO como alpha. Descartada.
+
+**Cómo funciona (fácil).** Cada stablecoin (USDT, USDC, DAI, FDUSD…) tiene su propio
+riel de emisión/redención y sus propios bancos. En condiciones normales, cada peg se
+mueve con ruido *propio* e independiente. Pero **los mismos market-makers arbitran
+todos los pegs a la vez**. Cuando ese capital compartido se retira (susto bancario,
+estrés de funding), los pegs empiezan a **temblar todos juntos**. Esa sincronización
+—que se mide con *información mutua* entre los pegs— se dispara **antes** de que
+estalle la volatilidad de BTC/ETH. Es una señal de **estrés sistémico → subí cash /
+reducí exposición / comprá volatilidad**.
+
+**Score.**
+- Mecanismo 4.5 — muy sólido y económico: capital de arbitraje compartido.
+- Lag 4.0 — el estrés se propaga en horas.
+- Falsabilidad 5.0 — **tiene chequeo de cordura incorporado**: debe encenderse sí o
+  sí en SVB/USDC-depeg (mar-2023), FTX (nov-2022), LUNA (may-2022). Si no se
+  enciende ahí, la hipótesis está muerta. Limpísimo.
+- Costo test 4.5 — klines de pares stablecoin en Binance spot, gratis.
+- Novedad 4.0 — la info mutua entre pegs casi no se usa en retail.
+- Retorno 3.5.
+
+**Cuánto podríamos ganar (prior).** No es una máquina de imprimir direccional; es una
+señal **defensiva de timing**. Su valor es *evitar drawdowns* (salir antes del pico
+de vol) y opcionalmente *comprar vol barata* antes del salto. Bien calibrada, el
+aporte típico de una señal de riesgo así es recortar la peor caída y mejorar el
+Sharpe general — no un % anual aislado.
+
+**Qué hace falta.** (1) Panel 1-min 2022–2025 de 4–5 pares stablecoin. (2) Info
+mutua rolling + z-score. (3) Sanity check en SVB/FTX/LUNA. (4) Event-study de vol
+forward de BTC/ETH condicionada a la señal. **Todo con data que ya sabemos bajar.**
+
+---
+
+### #1 — Timezone Handoff Volume-Entropy Continuation · 🟢 Tier 1 · Score 3.9
+
+> 🟡 **VERDICTO BACKTEST (2026-07-14): DÉBIL PERO REAL.** Data 1h 2022–2026, 5
+> símbolos (8.125 filas símbolo·día). Gradiente monotónico correcto: CONCENTRADO →
+> continuación (+0.097%/día), NEUTRO ~0, DIFUSO → reversión (−0.078%). IC continuo
+> +0.021 con **permutación p=0.025** (efecto real). OOS consistente: ambas mitades
+> positivas (H1 +0.031% / H2 +0.164%). P&L BTC operable: 393 trades, win 51%, avg
+> +0.168%, +43% total en ~4,5a, **Sharpe 0.43**. Conclusión: efecto genuino pero
+> demasiado chico para operarla sola; el valor real es como **variable de régimen**
+> (concentración→momentum / difusión→reversión) para condicionar otras señales.
+
+**Cómo funciona (fácil).** Cripto opera 24/7, pero la liquidez y la atención rotan
+entre las horas laborales de Asia / Europa / EE.UU. Para cada día calculás la
+**entropía de Shannon** de cómo se reparte el volumen por hora. Cuando esa entropía
+**colapsa** (el volumen se concentró en una sola sesión), significa que ese día lo
+manejó **una sola región operando sobre información local** (una noticia local, un
+desk local reposicionándose) que los que dormían en otras zonas todavía no
+procesaron. Predicción: ese movimiento **continúa** en la apertura de la región
+siguiente.
+
+**Score.**
+- Mecanismo 3.5 — razonable, pero el "continuation" puede solaparse con momentum
+  intradía ya conocido.
+- Lag 3.5 — el handoff entre sesiones es un lag real de horas.
+- Falsabilidad 5.0 — test trivial por buckets (z-score de entropía × sesión dominante).
+- Costo test 5.0 — **solo velas 1h que ya bajamos.** La más barata de todas.
+- Novedad 3.5 — la entropía de volumen es semi-novel; el momentum de sesión no tanto.
+- Retorno 3.0.
+
+**Cuánto podríamos ganar (prior).** Edge direccional chico pero de alta frecuencia
+(hay un "handoff" todos los días). Si el efecto de continuación aguanta, se puede
+componer seguido. Prior: modesto pero constante.
+
+**Qué hace falta.** 3+ años de velas 1h de BTC/ETH + 10 alts líquidas. Entropía diaria
+de volumen + z-score 30d + tag de sesión dominante + retornos con signo de sesión.
+Bucketear retorno de la sesión siguiente por (tercil de z-score × sesión). **Se puede
+probar esta semana.**
+
+---
+
+### #6 — Blob-fee KL Surprise (rotación risk-on a L2) · 🔵 Tier 3 · Score 3.7
+
+> 🔴 **VERDICTO BACKTEST (2026-07-15): REFUTADA.** Backfill propio del blob-fee horario
+> vía RPC público (Dencun mar-2024 → jul-2026, 20.374 muestras) + klines ARB/OP/BTC.
+> Señal = surprise firmado del log-fee (6h vs baseline 30d). La tesis (blob surprise →
+> L2 *le gana* a BTC) NO se cumple a 24h (IC ~0). En ventanas SOLAPADAS aparecía un
+> efecto inverso fuerte (blob spike → L2 *pierde* vs BTC, 96h t=−6.26), pero el verify
+> con **muestras NO-solapadas** (n=206 independientes) lo evaporó: t=−0.19, IC cambia
+> de signo, OOS H1 +0.90% vs H2 −1.29%. El "efecto" era artefacto de autocorrelación de
+> ventanas solapadas. Sin edge. Scripts: bt_blob_l2.py, bt_blob_verify.py, blob_backfill.py.
+
+**Cómo funciona (fácil).** Desde EIP-4844, el espacio de "blobs" en Ethereum se
+cobra con un mecanismo **totalmente desacoplado** del gas de ejecución. Entonces un
+salto en el fee de blobs es una lectura *limpia* de que los rollups (Base, Arbitrum,
+etc.) están posteando más batches → **más actividad especulativa retail en L2**
+(oleadas de memecoins/airdrops/mints). Medís la **sorpresa** de ese fee con
+divergencia KL (distribución reciente vs baseline de 30 días) y, cuando sorprende al
+alza, **te ponés long una canasta de tokens L2 (ARB/OP) contra BTC**.
+
+**Score.** Mecanismo 4.0 · Lag 3.5 · Falsabilidad 4.0 · Costo test 2.5 (data
+on-chain de blobs vía Dune/RPC — feed nuevo) · Novedad 4.5 (casi nadie lo mira) ·
+Retorno 3.5.
+
+**Cuánto podríamos ganar (prior).** Las rotaciones L2 vs BTC pueden ser jugosas
+(betas altos). Prior media-alta *si* el lead-lag se confirma. Riesgo: los tokens L2
+son volátiles y la señal puede llegar tarde.
+
+**Qué hace falta.** Reconstruir la sorpresa KL horaria del blob-fee desde mar-2024
+(RPC/Etherscan/Dune) + velas de ARB/OP/ETH/BTC. Regresión de retorno forward 1/2/4d
+de la canasta L2 − BTC sobre la sorpresa firmada, controlando por funding y vol.
+**Requiere montar un feed on-chain nuevo.**
+
+---
+
+### #3 — Quote-Lifetime Entropy Collapse (QLEC) · 🟡 Tier 2 · Score 3.6
+
+**Cómo funciona (fácil).** La liquidez sana es una *ecología diversa*: límites de
+retail pacientes, arbitrajistas, varios MMs con cadencias distintas, icebergs. Eso
+produce una distribución **ancha** (alta entropía) de "cuánto tiempo vive cada precio
+en el tope del book". Cuando la liquidez informada y paciente se retira antes de un
+movimiento, queda solo un **monocultivo de bots MM** repriceando mecánicamente → la
+entropía de esos tiempos de vida **colapsa**. Eso anticipa vol/movimiento en los
+próximos 15–60 min.
+
+**Score.** Mecanismo 4.0 · Lag 3.0 (edge de minutos, territorio HFT) · Falsabilidad
+4.0 · Costo test 2.5 (reconstruir bookTicker histórico, pesado) · Novedad 4.5 ·
+Retorno 3.5.
+
+**⚠️ Fit bot bajo:** horizonte de minutos → nuestro scheduler no lo ejecuta bien.
+
+**Cuánto podríamos ganar (prior).** Media, pero **capturarla requiere infra de baja
+latencia** que hoy no tenemos. Más útil como *filtro de régimen* (no operar cuando la
+liquidez es monocultivo) que como señal de entrada.
+
+**Qué hace falta.** bookTicker + aggTrades históricos de data.binance.vision;
+reconstruir entropía rolling de lifetimes + z-score; medir vol/retorno forward
+condicionado al desbalance de agresor. Procesamiento pesado.
+
+---
+
+### #4 — Iceberg Absorption Surprise (IAS) · 🟡 Tier 2 · Score 3.5
+
+**Cómo funciona (fácil).** Un jugador informado grande que quiere acumular sin
+señalizarse usa un **iceberg**: muestra solo la punta y la recarga tras cada fill. El
+book lo esconde, pero **la cinta de trades lo delata**: mucho volumen agresivo pega
+contra un nivel y el precio **no logra atravesarlo**. Esa "absorción" (volumen
+ejecutado ≫ profundidad visible, con precio clavado) revela un iceberg defendiendo un
+nivel → drift forward hacia el lado defendido.
+
+**Score.** Mecanismo 4.0 · Lag 3.0 · Falsabilidad 4.0 · Costo test 2.5 · Novedad 4.0
+· Retorno 3.5. **⚠️ Fit bot bajo (minutos).**
+
+**Cuánto podríamos ganar (prior).** Media. Buen mecanismo, pero mismo problema de
+latencia que QLEC.
+
+**Qué hace falta.** aggTrades + bookDepth snapshots; detectar episodios de absorción
+(ratio alto, precio clavado); medir retorno forward 10/20/30 min vs control de mismo
+volumen sin absorción.
+
+---
+
+### #7 — GPU-Spot → DePIN Spillover · 🔵 Tier 3 · Score 3.5
+
+**Cómo funciona (fácil).** Las redes DePIN de cómputo descentralizado (Render, Akash,
+etc.) monetizan el spread entre su costo marginal y el precio del cloud centralizado.
+Cuando el **precio spot de alquiler de GPUs** (H100/A100 en Vast.ai/RunPod) sube, el
+arbitraje de sustitución se ensancha y las cargas migran a la oferta descentralizada
+más barata → sube la utilización y el valor del token. Como **los traders de cripto
+no miran precios de GPU**, hay un lag de varios días → long canasta de tokens
+compute-DePIN.
+
+**Score.** Mecanismo 3.5 · **Lag 4.0** (lag real y grande — nadie mira ese dato) ·
+Falsabilidad 3.5 · Costo test 1.5 (historia de GPU spot es fina/difícil) · **Novedad
+5.0** (nadie lo usa) · Retorno 3.5.
+
+**Cuánto podríamos ganar (prior).** Media-alta *si* el lead-lag se confirma con
+Granger; es de las más originales. Riesgo principal: **conseguir historia confiable
+de precios de GPU** es el cuello de botella.
+
+**Qué hace falta.** Índice diario de precio GPU-hora (H100/A100) desde ~2023 (Vast.ai/
+RunPod). Alinear a retornos de tokens. Primero lead-lag/Granger para confirmar que el
+hardware **lidera** (no solo co-mueve); después event-study.
+
+---
+
+### #5 — Depth-Update Coupling / Layering TE · 🟡 Tier 2 · Score 3.2
+
+**Cómo funciona (fácil).** Participantes independientes cotizando en varios niveles
+del book producen cambios de tamaño casi independientes. Un **spoofer** que arma una
+pared falsa postea y cancela órdenes grandes *coordinadas* en varios niveles del mismo
+lado para simular presión. Esa coordinación se detecta con **información mutua** entre
+los cambios de nivel: cuando salta sin agresión real detrás, es una pared falsa →
+señal **contraria** (el precio irá al lado opuesto de la pared).
+
+**Score.** Mecanismo 3.5 · Lag 2.5 (segundos–minutos) · Falsabilidad 3.5 · Costo test
+2.0 (depth diffs, muy pesado) · Novedad 4.5 · Retorno 3.0. **⚠️ Fit bot bajo.**
+
+**Cuánto podríamos ganar (prior).** Baja-media; mucho ruido y territorio HFT. La menos
+prioritaria del lote.
+
+**Qué hace falta.** Reconstruir @depth diffs; info mutua/transfer-entropy cross-nivel;
+definir eventos de layering con baja agresión real; medir retorno forward 1/5/15 min
+controlando por desbalance de agresor.
+
+---
+
+## 4b. Convergencia ronda 2 (630 ideas → 2026-07-15)
+
+Las 630 ideas de la ronda 2 (que se habían cortado sin converger por el límite de
+sesión) se convergieron inline. Distribución por necesidad de data: onchain 405,
+orderbook 132, external 40, **klines 53**. Tras filtrar temas de ronda 1 y las ya
+testeadas quedaron 9 klines-testeables nuevas y 157 onchain nuevas.
+
+**Hallazgo meta:** la frontera nueva es **percolación / colapso de entropía en una
+red** como medidor de fragilidad — cuando un sistema diverso (memecoins, whales,
+blockspace, builders, co-compras same-block) colapsa a un solo modo sincronizado, es
+frágil. El tema se repite en ~6 ideas independientes.
+
+### Shortlist convergida (rankeada por testeable-ya × mecanismo × novedad)
+
+**🟢 Tier A — klines, testeable ya con data que tenemos:**
+1. **Memecoin Co-Movement Percolation** — 🔴 **REFUTADA (2026-07-15).** Klines 1h de
+   DOGE/SHIB/PEPE/FLOKI/BONK/WIF (2024-03→2026-07). Medidas de sincronización: PC1-share,
+   avg-corr, giant-component. El efecto en ventanas solapadas (24h diff −0.185% t=−2.39)
+   murió con muestras NO-solapadas (t=−0.18, IC +0.014, perm p=0.65, OOS inconsistente);
+   a 72h nada. Además falla la premisa: **PC1-share promedia 0.83** (los memecoins ya
+   están casi siempre sincronizados) → no hay estado "disperso" para contrastar. Sin
+   edge. Script: bt_memecoin_percolation.py.
+2. **00:00 UTC Synchronization Impulse** — 🔴 **REFUTADO (2026-07-18).** BTC 15m 2022→2026.
+   Hay reversión intradía genérica (vela 15m revierte en 1-4h, t=−2.9), pero el CONTROL
+   de las 12:00 revierte igual/más (t=−3.3) → 00:00 no es especial (no es reloj
+   Schelling), y la magnitud (~0.05%) la come el spread. Premisa falsa. Script: bt_midnight_impulse.py.
+3. **Gold→BTC Rotation Backlog (Little's Law)** — 🔴 **REFUTADO (2026-07-18).** PAXG (gold
+   proxy) + BTC diario 2020→2026, 8 combos (k,m). Ninguna significativa ni consistente:
+   IC no-solapado errático, permutación nunca <0.05 (mejor p=0.068 = ruido de comparaciones
+   múltiples), OOS sin robustez. Sin rotación predecible. Script: bt_gold_btc.py.
+
+**🔵 Tier B — necesitan data onchain (más esfuerzo, veta rica del mismo tema):**
+4. **Whale flows (proxy: exchange netflow)** — 🔴 **REFUTADO (2026-07-21, BigQuery).** Netflow
+   neto de ETH hacia/desde ~20 wallets de exchange (transactions, 2023-26). IC ~0 en 1/3/7d,
+   no-solapado sin señal, permutación p=0.3-0.8. (La percolación de co-compras a nivel swap
+   —versión completa— no se corrió: query más cara + prior bajísimo.) Script: bq_whale_netflow.py.
+5. **Blockspace Condensation (Bose-Einstein)** — 🔴 **REFUTADO (2026-07-21, BigQuery).** Concentración
+   diaria del gas por contrato (entropy/top1-share/HHI, crypto_ethereum, 2023-26, 107GB escaneados).
+   IC de vol con SIGNO INVERTIDO (más concentración → menos vol forward), IC de retorno nulo en
+   no-solapado (t=−2.03 a 7d se evapora). Script: bq_blockspace.py.
+6. **Builder-share entropy collapse** — 🔴 **REFUTADO (2026-07-18).** Data conseguida gratis
+   vía RPC (builder auto-identificado en `extraData`, ej. "Titan"). 12 meses, entropía diaria
+   de builders vs fwd ETH vol: IC solapado 0.15-0.20 pero **no-solapado ~0.03, permutación
+   p=0.40**. Otro espejismo de ventanas solapadas. Script: bt_builder_entropy.py.
+
+### Rutas de data GRATIS encontradas (20-agent hunt, 2026-07-18) — desbloquean Tier B
+- **Whale/co-buy percolation + Blockspace condensation** → **BigQuery público** `bigquery-public-data.crypto_ethereum` (genesis→hoy, 1TB/mes gratis, Sandbox sin tarjeta) para flujos y gas-por-contrato; labels vía `dawsbot/eth-labels` (115k, MIT) + `0xB10C/ofac` (point-in-time). Requiere que el usuario arme un GCP Sandbox (no puedo correr queries sin sus credenciales).
+- **#7 Coin-M OI largo** → **Bybit V5 API** (gratis, sin key) — usado para el re-test de #7 arriba.
+- **GPU→DePIN** → ⛔ sigue sin fuente: no hay historia gratis de precios *spot* de GPU (solo list-price coarse vía Wayback Lambda/CoreWeave 2019-23, o empezar a loguear hoy).
+- Whale-labels de pago (Arkham/Nansen) NO hacen falta: BigQuery + repos MIT cubren el caso gratis.
+
+### Microestructura order-book (research-only — horizonte HFT, el scheduler no ejecuta)
+Data confirmada gratis en data.binance.vision (aggTrades/bookTicker).
+- **Bet-size round-number mass** — 🔴 **REFUTADO (2026-07-18).** 20 días BTC aggTrades.
+  RoundMass no predice fade (IC ~0; y es solo ~3% del volumen). SizeEntropy→vol tiene
+  IC −0.165 pero SIGNO INVERTIDO y coincidente. Script: bt_betsize.py.
+- QLEC / Iceberg / Layering — sin testear (data más pesada: bookTicker + depth; mismo
+  mal-fit HFT y, dado el patrón 12/12, null casi seguro).
+
+### Critical Slowing Down / Early-Warning Signals (familia genérica) — 🔴 REFUTADA (2026-07-21)
+Cubre ~5 ideas onchain de ronda 2 (fallos judiciales, DePIN util, churn de operadores,
+pre-graduación). Test genérico en BTC: la señal canónica **AR1 (autocorrelación) es nula**
+(IC −0.02, no-solapado −0.03, perm p=0.65). La varianza "predice" vol forward pero es
+**solo vol-clustering** (var ≡ vol actual, partial=NaN) — trivial, no alpha. Las DOS
+meta-familias de ronda 2 (percolación/entropía Y critical-slowing/EWS) refutadas. Script: bt_critical_slowing.py.
+
+### #7-GPU→DePIN — ⛔ data-gated (historia de precios GPU spot fina/no confiable).
+
+**Recomendación:** testear **#1 (Memecoin Percolation)** primero — es klines, encaja
+con el bot, y es la instancia más limpia y accionable del tema meta.
+
+## 4c. Ideas bespoke-data (RWA / DePIN / PoR) — 2026-07-21
+
+Investigadas + testeadas en el loop principal (los 3 agentes de scouting murieron por
+límite de sesión; se hizo directo con DefiLlama/BigQuery/REST).
+
+- **RWA / Tokenized T-Bill Rotation** — 🟡 **DÉBIL / INCONCLUSIVA.** Basket de AUM de
+  treasuries tokenizados (Ondo/Superstate/OpenEden/Matrixdock/Securitize, DefiLlama,
+  ~$9.5B, período maduro desde 2024-07). Señal = flujo diario del AUM (z-score). Signo
+  CORRECTO (inflow a treasuries → cripto abajo) y consistente en BTC-7d (no-solapado
+  IC −0.107, ambas mitades OOS negativas), pero NO significativa (permutación p=0.13) y
+  historia madura corta (~1a). Mecanismo real, señal chica, sub-powered. Revisitar
+  cuando crezca la historia. Script: bt_rwa_rotation.py.
+- **DePIN Usage-Burn** — ⛔ **data-gated.** Los tokens DePIN líquidos (Render/Helium/
+  Akash) no tienen serie de burn/uso en agregadores gratis (404 en DefiLlama fees); vive
+  en APIs por-red (Solana/Cosmos), integración bespoke c/u. Los que sí (Filecoin/GEODNET)
+  son proxies malos o ilíquidos. No testeable limpio sin armado por-red.
+- **Proof-of-Reserves Sawtooth** — ⛔ **data-gated + sub-powered.** No hay historia diaria
+  gratis de reservas de exchanges (DefiLlama da solo snapshot actual); armarla vía BigQuery
+  captura solo ETH (se pierde BTC/otras cadenas), + fechas de PoR bespoke + pocos eventos
+  (~mensuales). No hay ruta limpia.
+
+## 4d. Insight meta + stablecoin-flow (2026-07-21)
+
+- **Stablecoin Supply Flow → BTC** — 🟡 **DÉBIL/INCONCLUSIVA.** Minteo neto de stablecoins
+  (DefiLlama supply 2020-26) vs BTC forward. 7d: signo correcto (minteo→BTC arriba, +1.37%
+  vs +0.72% resto), OOS ambas mitades positivas, pero perm p=0.099 (no significativa). 3d nulo.
+  Script: bt_stablecoin_flow.py.
+
+**INSIGHT META (el hallazgo más útil de la búsqueda):** las hipótesis se parten en dos
+familias con destinos opuestos:
+- **FLUJO / OFERTA / posicionamiento** (#6 funding-dispersion, #1 timezone, RWA-rotation,
+  stablecoin-flow): señal **REAL** — #6 fuerte, el resto débil-pero-con-signo-correcto-y-OOS-consistente.
+- **ESTRUCTURA / topología de red** (percolación, entropía, mutual-info, critical-slowing-down,
+  builder, blockspace): **NULOS puros** — se evaporan en el verify no-solapado o tienen signo invertido.
+
+⇒ El edge en cripto líquido vive en **flujo/posicionamiento/oferta**, no en estadística de
+topología. Implica: (a) dejar de perseguir ideas "de física de redes"; (b) el próximo tiro con
+mejor prior es un **ENSEMBLE de las señales de flujo independientes** (#6 + stablecoin-flow +
+RWA), que por ser todas signo-correcto y de fuentes distintas podrían sumar (a diferencia de
+#6+#1, que mezcló una señal de flujo con una de régimen y no sumó).
+
+## 4e. Flow Ensemble + reality-check de #6 (2026-07-22)
+
+- **Flow Ensemble (#6 + stablecoin-flow)** — 🔴 **NO SUMAN.** Sharpe daily-rebalanced
+  2021-2026: #6-short-only 0.00, stablecoin-dir −0.37, ensemble −0.39 (peor). Las señales
+  de flujo no se apilan. Script: bt_flow_ensemble.py.
+- **Reality-check de #6 (importante):** sobre el ciclo COMPLETO de 5,5 años (con bull runs)
+  #6 como short-only da **Sharpe ~0** (vs 2.0 en la ventana bear 2025-26). Su P&L es
+  **regime-dependiente** — sangra como solo-short en bull markets. La validación de #6 (IC/
+  event-study direccional) es real, pero convertirla en P&L positivo depende del régimen +
+  tailwind de funding + sizing. NO es un always-short money-printer. (El test omitió el
+  funding-credit → subestima algo a #6, pero el punto del régimen se sostiene.) El
+  forward-test en vivo es justo lo que mide si el régimen ACTUAL le sirve.
+
+## 5. Estado de las validadas (contexto)
+
+| # | Hipótesis | Veredicto | Números |
+|---|---|---|---|
+| **#6** | Funding Dispersion Collapse | ✅ **Edge chico pero real** (doble-verificado) | Backtest 1,34a: **+44%/año, Sharpe 2.0, maxDD −15%**, neto de fees+funding. Bate 8× al short indiscriminado (Sharpe 0.35) → el timing es real. **PERO** muestra de 1 solo régimen bajista + in-sample → expectativa realista descontada ~15–25%/año. Falta forward-test + muestra alcista. |
+| **#7** | Coin-Margined Convexity | 🟡 **CONFIRMADA (2021-23) pero DECAÍDA (2024+) — no operable hoy** | Re-test con **6 años** de OI de **Bybit V5** (gratis, sin key; inverse BTCUSD vs linear BTCUSDT). Tesis confirmada: share coin-M alto → downside forward amplificado. 7d: IC=+0.30, no-solapado +0.30, permutación **p=0.000**, marginal sobre vol actual (parcial +0.25), y aguanta en período maduro (2021-05+, sin data naciente, p=0.000). PERO en **2024+ el IC cae a +0.06 (parcial +0.05, no-solapado +0.004)** → el edge se arbitró/decayó. Mecanismo real, no tradeable ahora. La 1ª vez fallaba por los ~30d de Binance. Scripts: bt_coinm_bybit.py, bt_coinm_verify2.py. |
+
+> Detalle del método de #6/#7 y del estado de la ideación: ver memoria
+> `signal-research-state`.
+
+---
+
+## 6. Recomendación (actualizada 2026-07-14 tras backtestear #1 y #2)
+
+Estado del embudo Tier 1: **#2 refutada** (detector coincidente, no predictor); **#1
+débil pero real** (Sharpe 0.43 — no operable sola, sí valiosa como filtro de régimen).
+
+**Lección metodológica:** el score a priori (#2 tenía 4.3, el más alto) **no predijo
+el resultado**. Confirma que el score ordena *qué probar*, no *qué gana* — el dato
+manda. Dos de tres validadas (#2, #7) cayeron; el patrón hasta ahora es que los edges
+sobrevivientes (#6, #1) son **reales pero chicos**, no máquinas de imprimir.
+
+### Backtests adicionales (2026-07-14)
+
+- **Combinar #6 + #1 (filtro de régimen) → ❌ NO MEJORA.** Filtrar el short de #6 por
+  el régimen de #1 baja el Sharpe (1.81 baseline → 1.35 excl-concentrado / 1.41
+  solo-difuso). #6 rinde parejo en todos los regímenes (retorno-short: concentrado
+  +0.28% / neutro +0.53% / difuso +0.24%). **Hallazgo:** #6 es **robusta a régimen**,
+  no necesita condicionamiento; los dos edges no son sinérgicos. Combinación cerrada.
+- **Weekend/CME-gap reversal (del pool de 630) → ❌ REFUTADA.** IC +0.065 (signo
+  equivocado: los findes *continúan*, no revierten), permutación p=0.86, P&L fadeando
+  el finde −85% total / Sharpe −0.80. Descartada.
+
+### Estado del embudo (6 hipótesis testeadas)
+
+| Hipótesis | Veredicto |
+|---|---|
+| #6 Funding Dispersion | ✅ edge operable real (Sharpe ~1.8, robusto a régimen) |
+| #1 Timezone Entropy | ⚠️ real pero flojo (Sharpe 0.43), no combina con #6 |
+| #7 Coin-M Convexity | ❌ data insuficiente |
+| #2 Peg Synchronization | ❌ detector coincidente, no predictor |
+| #6+#1 combinación | ❌ no mejora |
+| Weekend reversal | ❌ refutada |
+
+**Lectura:** en cripto líquido los edges direccionales fáciles ya están arbitrados;
+solo #6 sobrevive con edge operable. Seguir perforando ideas klines-only especulativas
+tiene rendimiento decreciente (4 de las últimas 5 murieron).
+
+### Recomendación (2026-07-14)
+
+1. **Forward-test de #6 en demo** — es la ÚNICA con edge operable confirmado.
+   Validarla en vivo fuera de muestra es el paso de mayor valor/riesgo-bajo.
+2. **Ideas no-testeadas de mayor esfuerzo** (blob L2, microestructura order-book):
+   requieren montar feeds de data nuevos; abordarlas solo si se decide invertir en eso.
+3. **Dejar de perforar ideas klines-only especulativas** — el embudo muestra
+   rendimiento decreciente.
+
+---
+
+## 4f. Ronda dirigida "familia flujo/posicionamiento" (2026-08-11)
+
+Tras el insight meta (flujo/posicionamiento = señal real; topología = nulo), se generó
+una tanda **dirigida** a la familia flujo, priorizando ideas testeables con **data gratis**.
+6 candidatas (F1–F6), scoreadas con el framework de §1. Recon de datos primero (clave:
+casi todo lo que mató candidatas antes fue *disponibilidad de datos*). Cada una corrió la
+batería completa (event-study + IC continuo + **verify no-solapado** + permutación + OOS +
+control por vol) en un agente separado.
+
+| # | Idea | Fuente | Score prior | Veredicto |
+|---|---|---|---|---|
+| F1 | ETF spot flujo neto (T+1) | Farside/SoSoValue | 3.95 | ⛔ **DATA-GATED** (Farside 403, SoSoValue/Yahoo/CoinGlass bloqueados desde el entorno; requiere CSV manual del usuario) |
+| F2 | Skew 25Δ opciones (risk reversal) | Deribit | 3.90 | ⛔ **DATA-GATED** (Deribit público da skew solo del snapshot actual; trade-history es ventana rodante ~24-36h → sin historia reconstruible). Snapshot hoy: BTC/ETH en put-skew (estado normal). Ruta: forward-collect diario o vendor pago (Laevitas/Amberdata). |
+| F3 | Base spot-perp (contrarian / carry-unwind) | Binance premiumIndexKlines | 3.83 | ❌ **REFUTADO**. 5.5a. Contrarian: único efecto IC~0.05 a 1d, falla permutación (p=0.066/0.17) y OOS (todo en 2020-22). Carry-unwind: **signo invertido** (base colapsa → rebota, no continúa). Script bt_spot_perp_basis.py |
+| F4 | Overhang de unlocks/vesting | DefiLlama datasets `/emissions` | 3.83 | ❌ **REFUTADO** (null bien-powered: 175 protocolos, 1544 eventos, 112 tokens). CAR pre/post negativos PERO **placebo con fechas random da igual de negativo (p=0.57)** → es el drift genérico de alts vs BTC, no el unlock. No monótono en tamaño, se anula OOS 2025-26. Mata la frontera "oferta forzada con fecha" de ronda 1. Script bt_unlock_overhang.py (+ unlock_cache.pkl) |
+| F5 | DVOL (vol implícita = miedo) | Deribit get_volatility_index_data | 3.80 | 🟡 **DÉBIL-REAL**. Miedo alto→rebota, complacencia→floja (mean-reversion). IC level +0.07/+0.12 (1d→7d), **sobrevive no-solapado y control por vol** (no es vol realizada). Peros: IC chico (~0.1), permutación pasa solo la pata baja-DVOL, buckets discretos no-sig, "spike" es artefacto. VRP (impl−real) mejor en ETH. **Feature de régimen, no gatillo standalone.** Candidato a combinar con #6. Script bt_dvol.py |
+| F6 | Divergencia OI-precio | Bybit V5 OI | 3.58 | ❌ **REFUTADO**. BTC null limpio (perm p 0.41-0.92). ETH susurro (IC -0.04) pero no-sig (mejor p=0.054) y **signo contrario al mecanismo**. Ningún cuadrante sobrevive. Script bt_oi_price_divergence.py |
+
+**Resultado de la ronda:** 3 refutadas (F3/F4/F6), 2 data-gated (F1/F2), 1 débil-real (F5).
+Cero edges operables nuevos. **F5 (DVOL) es el único sobreviviente** — un feature de
+régimen/posicionamiento con el mismo perfil que #1 (real pero flojo), candidato a
+condicionar #6 (ej. no shortear con miedo ya extremo).
+
+**Corrección importante a ronda 1:** la frontera "oferta forzada con fecha" (unlocks),
+que la ideación había marcado como ganadora, **nunca se había backtesteado — ahora sí, y
+es null** (F4, placebo decisivo). La ideación ordena qué probar, no qué gana (otra vez).
+
+**Refinamiento del insight meta:** dentro de la propia familia flujo, la mayoría también
+muere. Lo que sobrevive es **posicionamiento/sentimiento medido por derivados** (#6 funding,
+F5 vol implícita) — no los flujos de oferta on-chain (unlocks, stablecoin) ni la base/OI.
+El edge fino vive en el *posicionamiento apalancado de derivados*, no en la contabilidad de oferta.
+
+---
+
+## 4g. Ronda "grey-hat / backdoor legal" (2026-08-11)
+
+Brief: hipótesis rebuscadas de *info pública leída de forma astuta* (timing, metadata, colas,
+filtraciones de infra). Línea roja explícita: solo data pública/observable — NADA de insider/MNPI,
+acceso no autorizado, explotar vulnerabilidades, ni MEV/sandwich contra usuarios. Recon de datos
+primero; 3 candidatas con historia pública testeadas en agentes separados, batería rigurosa completa.
+
+| # | Idea | Fuente | Veredicto |
+|---|---|---|---|
+| L7 | **Mirror Hyperliquid smart-money** (posiciones+PnL públicos por wallet) | Hyperliquid info API + leaderboard (stats-data) | 🟡 **DÉBIL (→refutado)**. Universo 41.463 wallets (52% con PnL negativo → NO survivor-only); pool final 138 wallets, 171k fills BTC/ETH. Walk-forward estricto (rank por Sharpe de closedPnl in-sample → net-bias OOS → IC causal next-hour). Top IC +0.075 > random +0.014 > bottom −0.052 (eje de skill real), persistencia +0.18. PERO **placebo p=0.32 (falla <0.05)**, IC ~0.07 horario no sobrevive fees, solo 3 ventanas cortas (fetch cortado por rate-limit a 355/600 wallets). Sugestivo pero underpowered; el "más vivo de los muertos" — un re-run con más wallets/ventanas/historia PODRÍA moverlo. Scripts bt_hyperliquid_smartmoney.py / bt_analyze_cached.py |
+| L4 | **Tether "autorizado-no-emitido"** (balance de tesorería) | BigQuery crypto_ethereum.token_transfers | ❌ **REFUTADO** (null contundente). 8a de balance de tesorería (0x5754…b949, 342GB facturados). IC negativo y minúsculo (signo AL REVÉS del mecanismo "dry powder"). Non-solapado |t|<1.3, permutación todos p>0.2. Es serie DISTINTA del supply circulante (corr −0.10, no es reempaquetado) pero cero edge incremental. Script bt_tether_treasury.py |
+| L3 | **Cola de validadores ETH** (oferta de venta futura con delay de protocolo) | beaconcha.in (gated) / BigQuery (proxy) | ⚠️ **entrada REFUTADA / salida DATA-GATED**. La cola de SALIDA (el verdadero mecanismo) vive en la beacon chain y todas las fuentes gratis piden auth ahora (beaconcha.in/rated/Dune) → necesita API key GRATIS de beaconcha.in. Proxy testeable: flujo de depósitos al contrato de staking (BigQuery, 190GB, 2021-26 n=2002) → IC~0, permutación p>0.23 → REFUTADO. Script bt_eth_staking_flow.py |
+
+**Resultado:** 0 edges operables. L4 refutado limpio; L3 entrada refutada (salida pendiente de key gratis);
+L7 débil/underpowered pero con estructura sugestiva (único candidato a re-run más profundo).
+
+**Aprendizajes:**
+- Las ideas de *timing puro* más jugosas (mempool whale-deposit, listing-leak, cert-transparency)
+  no tienen historia para backtestear → requieren **forward-collection desde hoy**, no se pueden validar retro.
+- El acceso gratis a data on-chain "seria" se está cerrando: beaconcha.in y Etherscan ahora piden key;
+  BigQuery público sigue siendo la mejor vía gratis que queda.
+- Refuerza el patrón: el posicionamiento por DERIVADOS (funding #6, vol implícita F5) sigue siendo lo único
+  con señal; los flujos de oferta on-chain (unlocks, Tether, staking) dan null tras null.
+
+---
+
+## 4h. #6.1 dos-lados (long+short) — 2026-08-11 · ❌ EMPEORA, no adoptar
+
+Test: agregar la pata LONG espejo a #6 (long cuando funding muy NEGATIVO + dispersión comprimida =
+"crowded shorts → squeeze"). Sin parámetros nuevos, pura simetría. BTC 2020-02→2026-08, neto de
+fees 0.08% RT + crédito de funding. Script bt_exploit6_twosided.py.
+
+**Resultado inequívoco: la pata long es lastre neto y destruye el edge bear de #6.**
+
+| Variante | Sharpe (1x) | annRet (1x) | maxDD (1x) | N | win |
+|---|---|---|---|---|---|
+| #6 short-only | +0.09 | -1.22% | -56.8% | 338 | 50.3% |
+| #6.1 two-sided | **-0.09** | -11.70% | -78.1% | 579 | 48.9% |
+
+- **Por régimen (clave):** #6 short-only en BEAR = +236% (3x), Sharpe +0.90 — ES el motor. #6.1 lo
+  convierte en -115% (los longs compran "crowded shorts" que siguen cayendo). En BULL ninguna funciona
+  (#6.1 pierde un poco más). La simetría NO tapa el sangrado bull y canibaliza el alfa bear.
+- **Pata long aislada:** 241 trades, win 45.6%, -148% acumulado (3x). Empíricamente el thesis
+  "funding muy negativo → long" NO se sostiene.
+- OOS ambas mitades: #6.1 peor que #6 en las dos. Sin período que rescate la pata long.
+
+**DOS CONCLUSIONES:**
+1. **#6 queda SHORT-ONLY.** La simetría es empíricamente falsa acá.
+2. **Dato duro sobre #6:** sobre el ciclo completo #6 short-only es apenas break-even (Sharpe +0.09,
+   annRet -1.2% 1x); TODO su alfa vive en BEAR (Sharpe +0.90) y sangra en BULL (Sharpe -0.31 a -0.64).
+   → #6 es un "cosechador de downtrend", no un money-maker all-weather. **El próximo paso de valor NO es
+   más simetría sino un GATE DE RÉGIMEN**: correr #6 solo cuando px<200d MA (donde tiene Sharpe +0.90).
+   Un parámetro conocido, bajo riesgo de overfit, y la separación bull/bear es enorme y limpia.
+3. **Apalancamiento:** 3x notional-fijo sobre el ciclo completo = RUINA (maxDD -97% #6, >-100% #6.1).
+   El sizing en vivo (risk 1%/trade) es mucho más conservador que "3x siempre", pero confirma que
+   apalancar #6 sin gate de régimen es jugar a que no venga el bull.
+
+---
+
+## 4i. Barrido de 10 variantes de #6 (2026-08-11) — dataset compartido, P&L 5.5y, batería por régimen
+
+10 agentes paralelos, cada uno una variante, sobre shared_funding.pkl + shared_klines.pkl (13 syms, 2019-2026).
+Todos net de 0.08% RT + crédito de funding, Sharpe 1x, split BULL/BEAR (200dMA). Baseline #6 short-only: full-cycle Sharpe ~+0.09/0.16, BEAR ~+0.90-1.08, BULL negativo. Scripts bt6v1..v10 en scratchpad.
+
+| v | Variante | Veredicto | Resultado clave |
+|---|---|---|---|
+| **1** | **Gate de régimen** (short solo px<MA) | ✅ **MEJORA** | Sharpe +0.10→**+0.45** (50dMA) / +0.39 (100dMA); maxDD −56%→−26/−32%; annRet neg→+5%. Los 4 filtros coinciden (meseta). El 200d "de manual" es el MÁS FLOJO; la ventaja está en los filtros RÁPIDOS (50-100d = pullback de corto plazo). 100d = el más balanceado (retiene 93% del alfa bear). |
+| **2** | **Reglas de salida** | ✅ **MEJORA** | Stop catástrofe 9%→**4%** ~triplica Sharpe (+0.16→**+0.49**), maxDD −59%→−45%. Meseta estable (4-5% en todo el grid), aguanta ambas mitades. TP no ayuda; trailing PERJUDICA (y ojo: un trailing "mágico" +1.57 era look-ahead de fills en gaps → corregido a gap-aware colapsó a −0.31). Cost-sensitive: se degrada >0.18% RT. |
+| 3 | Mapa de robustez | ✅ **ROBUSTO** (validación) | Umbrales (0.5,−0.25) en meseta suave, valores en vivo CONSERVADORES (no pico de suerte). 29/30 celdas bear positivas. Ventana 30 es el óptimo del eje (magnitud algo sensible) pero signo robusto. #6 NO está overfitteado. |
+| 4 | Tamaño por convicción | ❌ **PEOR** | La "strength" está DESCORRELACIONADA del P&L (Spearman ≈0); las señales fuertes ganan MENOS seguido (41% vs 54% win). El Sharpe full-cycle "mejora" pero es trampa (todo en período viejo, revierte OOS, empeora bear). Usar tamaño FLAT. |
+| 5 | Moneda cross-sectional | ❌ **PEOR** full-cycle | Sharpe +0.09→−0.26. Nuance: en BEAR shortear la alt más crowded rinde más (Sharpe 1.28 vs 0.99, +163% vs +80%) pero el bull bleed lo tapa + iliquidez alts. Curiosidad bear-only. |
+| 6 | Canasta de alts | 🟡 **SIN CAMBIO** | Fragilidad cruda mayor en alts (bear +27% vs +19%) pero es VOL extra, no señal: Sharpe sube solo +0.02-0.05, no estable en N. No arregla el defecto. |
+| 7 | Ablación de dispersión | ✅ **DISPERSIÓN APORTA** (validación) | #6-completo bate a common-only en TODO (Sharpe +0.09 vs −0.21). PERO ningún término solo funciona; la novedad es la CONJUNCIÓN (AND-gate) que poda las peores entradas (win 49→50%, avg/trade −0.55%→−0.14%). |
+| **8** | **Aceleración de funding** | ✅ **MEJORA** (V2) | Entrar cuando el crowding SE DA VUELTA (cchg<0): Sharpe +0.27, maxDD −34%. Entrar mientras SUBE (cchg>0) = desastre (−0.58). Overlay bull-safe (misma familia que el gate: evita shortear la suba). En BEAR el level-base sigue mejor. |
+| 9 | Filtro DVOL (F5) | 🟡 **SIN CAMBIO** | Muestra 2021+ (base ya ~0 edge). Deltas minúsculas y no-monótonas (ruido). Solo leve baja de maxDD (−58→−48/53%) apoyada en 24-97 días → no confiable. |
+| 10 | Vol-targeting | ❌ **PEOR** | Backfire elegante: el edge de #6 vive en ALTA vol (crashes); el inverse-vol achica la posición justo cuando el short paga. Retornos correlacionados POSITIVO con vol → vol-targeting está al revés acá. |
+
+### Síntesis
+- **Dos mejoras robustas e independientes (ortogonales → deberían STACKEAR):** (1) **gate de régimen** (WHEN: short solo en downtrend, 50-100dMA) y (2) **stop 4%** (HOW: control del left-tail). Una toca la entrada, la otra la salida.
+- **Una tercera** (v8 rollover) ataca el mismo defecto que el gate (evitar shortear la suba) → posiblemente redundante con v1.
+- **Dos validaciones fuertes:** #6 es robusto (v3) y la dispersión aporta vía la conjunción (v7).
+- **Descartes útiles:** sizing por convicción (v4), cross-section (v5), canasta (v6), DVOL (v9), vol-target (v10) — no mejoran o empeoran.
+- **Todo sigue siendo modesto (Sharpe <0.5), bear-dependiente y cost-sensitive.** Las mejoras son control de cola/bull-avoidance, NO mayor win-rate.
+- **PRÓXIMO PASO:** combinar gate-de-régimen (100dMA) + stop-4% + sizing flat → "#6.2" y confirmar que stackean (esperado: Sharpe ~0.5-0.7, maxDD <−30%).

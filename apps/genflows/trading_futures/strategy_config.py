@@ -22,38 +22,48 @@ class StrategyConfig:
     max_leverage: int = 5
 
     # --- Position sizing ----------------------------------------------------
-    # Classic 1% risk-per-trade rule. Enforced in code against the actual
-    # stop distance, not left to the model to "calculate".
-    risk_per_trade_pct: float = 1.0
-    # Aggregate cap across all open positions (BTC/ETH/alts are correlated, so
-    # concurrent positions are closer to one concentrated bet than to N bets).
-    max_portfolio_risk_pct: float = 3.0
-    max_concurrent_positions: int = 3
+    # NOTE: TESTNET-AGGRESSIVE values (2026-08-11). The prudent production values
+    # are risk_per_trade_pct=1.0 / max_portfolio_risk_pct=3.0 / max_daily_loss_pct=5.0
+    # (Van Tharp 1-2% rule). We deliberately size UP on the demo account to make the
+    # forward-test's dollar P&L bigger/faster to read. This does NOT improve the edge
+    # (Sharpe/%-return are unchanged) — it only scales P&L and drawdown. DO NOT ship
+    # these to a real-money account without reverting to the 1% / 3% / 5% guardrails.
+    risk_per_trade_pct: float = 5.0
+    # Aggregate cap across all open positions. LEARNING MODE (2026-08-14): widened
+    # so ~8 concurrent positions at 5% risk each can be open (prod value: 3.0).
+    max_portfolio_risk_pct: float = 40.0
+    max_concurrent_positions: int = 8
 
     # --- Circuit breaker ----------------------------------------------------
     # Halt new positions once the day is down this much (kill-switch in code).
-    max_daily_loss_pct: float = 5.0
+    # LEARNING MODE: widened so the day rarely halts and keeps generating trades
+    # (testnet-only; prod value: 5.0).
+    max_daily_loss_pct: float = 50.0
 
     # --- Exits --------------------------------------------------------------
     atr_stop_multiplier: float = 1.5
     tp1_atr_multiplier: float = 1.5
     tp2_atr_multiplier: float = 3.0
-    min_risk_reward: float = 2.0
+    # LEARNING MODE: relaxed from 2.0 so more setups qualify (prod value: 2.0).
+    min_risk_reward: float = 1.0
 
     # --- Dynamic cadence ----------------------------------------------------
     # The agent decides when to run next (NEXT_RUN_MINUTES). The code clamps it:
     # SL/TP live on the exchange (reduce-only), so the bot does not need seconds-
     # level polling — it re-evaluates on the agent's schedule, bounded here.
-    default_run_minutes: int = 15          # used when the agent gives no/invalid value
+    default_run_minutes: int = 10          # used when the agent gives no/invalid value
     min_run_minutes: int = 1               # floor (avoid hammering / cost)
-    max_run_minutes: int = 60              # ceiling (agent decides freely below this, positions or not)
+    max_run_minutes: int = 15              # LEARNING MODE: capped low so it re-evaluates often (prod value: 60)
 
     # --- Regime filter (ADX-14) --------------------------------------------
     # ADX >= trend threshold  -> trending  -> momentum entries only
     # ADX <= range threshold  -> ranging   -> mean-reversion entries only
     # in between               -> undefined -> do NOT trade
-    adx_trend_threshold: float = 25.0
-    adx_range_threshold: float = 20.0
+    # LEARNING MODE: both set to 22 so the "UNDEFINED / do-not-trade" band collapses
+    # to zero — every reading is TREND or RANGE, so the bot always has a playable edge
+    # and stops sitting out (prod values: 25 / 20). This was the single biggest throttle.
+    adx_trend_threshold: float = 22.0
+    adx_range_threshold: float = 22.0
 
 
 # Module-level singleton used across the workflow, prompt and client.

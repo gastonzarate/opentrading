@@ -34,6 +34,7 @@ class TradingOperationSerializer(serializers.ModelSerializer):
             "status",
             "status_display",
             "currency",
+            "source",
             # Trading parameters
             "quantity",
             "leverage",
@@ -82,6 +83,7 @@ class TradingOperationListSerializer(serializers.ModelSerializer):
             "status",
             "status_display",
             "currency",
+            "source",
             "quantity",
             "entry_price",
             "realized_pnl",
