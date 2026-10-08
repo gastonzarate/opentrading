@@ -454,3 +454,124 @@ tiene rendimiento decreciente (4 de las últimas 5 murieron).
    requieren montar feeds de data nuevos; abordarlas solo si se decide invertir en eso.
 3. **Dejar de perforar ideas klines-only especulativas** — el embudo muestra
    rendimiento decreciente.
+
+---
+
+## 4f. Ronda dirigida "familia flujo/posicionamiento" (2026-08-11)
+
+Tras el insight meta (flujo/posicionamiento = señal real; topología = nulo), se generó
+una tanda **dirigida** a la familia flujo, priorizando ideas testeables con **data gratis**.
+6 candidatas (F1–F6), scoreadas con el framework de §1. Recon de datos primero (clave:
+casi todo lo que mató candidatas antes fue *disponibilidad de datos*). Cada una corrió la
+batería completa (event-study + IC continuo + **verify no-solapado** + permutación + OOS +
+control por vol) en un agente separado.
+
+| # | Idea | Fuente | Score prior | Veredicto |
+|---|---|---|---|---|
+| F1 | ETF spot flujo neto (T+1) | Farside/SoSoValue | 3.95 | ⛔ **DATA-GATED** (Farside 403, SoSoValue/Yahoo/CoinGlass bloqueados desde el entorno; requiere CSV manual del usuario) |
+| F2 | Skew 25Δ opciones (risk reversal) | Deribit | 3.90 | ⛔ **DATA-GATED** (Deribit público da skew solo del snapshot actual; trade-history es ventana rodante ~24-36h → sin historia reconstruible). Snapshot hoy: BTC/ETH en put-skew (estado normal). Ruta: forward-collect diario o vendor pago (Laevitas/Amberdata). |
+| F3 | Base spot-perp (contrarian / carry-unwind) | Binance premiumIndexKlines | 3.83 | ❌ **REFUTADO**. 5.5a. Contrarian: único efecto IC~0.05 a 1d, falla permutación (p=0.066/0.17) y OOS (todo en 2020-22). Carry-unwind: **signo invertido** (base colapsa → rebota, no continúa). Script bt_spot_perp_basis.py |
+| F4 | Overhang de unlocks/vesting | DefiLlama datasets `/emissions` | 3.83 | ❌ **REFUTADO** (null bien-powered: 175 protocolos, 1544 eventos, 112 tokens). CAR pre/post negativos PERO **placebo con fechas random da igual de negativo (p=0.57)** → es el drift genérico de alts vs BTC, no el unlock. No monótono en tamaño, se anula OOS 2025-26. Mata la frontera "oferta forzada con fecha" de ronda 1. Script bt_unlock_overhang.py (+ unlock_cache.pkl) |
+| F5 | DVOL (vol implícita = miedo) | Deribit get_volatility_index_data | 3.80 | 🟡 **DÉBIL-REAL**. Miedo alto→rebota, complacencia→floja (mean-reversion). IC level +0.07/+0.12 (1d→7d), **sobrevive no-solapado y control por vol** (no es vol realizada). Peros: IC chico (~0.1), permutación pasa solo la pata baja-DVOL, buckets discretos no-sig, "spike" es artefacto. VRP (impl−real) mejor en ETH. **Feature de régimen, no gatillo standalone.** Candidato a combinar con #6. Script bt_dvol.py |
+| F6 | Divergencia OI-precio | Bybit V5 OI | 3.58 | ❌ **REFUTADO**. BTC null limpio (perm p 0.41-0.92). ETH susurro (IC -0.04) pero no-sig (mejor p=0.054) y **signo contrario al mecanismo**. Ningún cuadrante sobrevive. Script bt_oi_price_divergence.py |
+
+**Resultado de la ronda:** 3 refutadas (F3/F4/F6), 2 data-gated (F1/F2), 1 débil-real (F5).
+Cero edges operables nuevos. **F5 (DVOL) es el único sobreviviente** — un feature de
+régimen/posicionamiento con el mismo perfil que #1 (real pero flojo), candidato a
+condicionar #6 (ej. no shortear con miedo ya extremo).
+
+**Corrección importante a ronda 1:** la frontera "oferta forzada con fecha" (unlocks),
+que la ideación había marcado como ganadora, **nunca se había backtesteado — ahora sí, y
+es null** (F4, placebo decisivo). La ideación ordena qué probar, no qué gana (otra vez).
+
+**Refinamiento del insight meta:** dentro de la propia familia flujo, la mayoría también
+muere. Lo que sobrevive es **posicionamiento/sentimiento medido por derivados** (#6 funding,
+F5 vol implícita) — no los flujos de oferta on-chain (unlocks, stablecoin) ni la base/OI.
+El edge fino vive en el *posicionamiento apalancado de derivados*, no en la contabilidad de oferta.
+
+---
+
+## 4g. Ronda "grey-hat / backdoor legal" (2026-08-11)
+
+Brief: hipótesis rebuscadas de *info pública leída de forma astuta* (timing, metadata, colas,
+filtraciones de infra). Línea roja explícita: solo data pública/observable — NADA de insider/MNPI,
+acceso no autorizado, explotar vulnerabilidades, ni MEV/sandwich contra usuarios. Recon de datos
+primero; 3 candidatas con historia pública testeadas en agentes separados, batería rigurosa completa.
+
+| # | Idea | Fuente | Veredicto |
+|---|---|---|---|
+| L7 | **Mirror Hyperliquid smart-money** (posiciones+PnL públicos por wallet) | Hyperliquid info API + leaderboard (stats-data) | 🟡 **DÉBIL (→refutado)**. Universo 41.463 wallets (52% con PnL negativo → NO survivor-only); pool final 138 wallets, 171k fills BTC/ETH. Walk-forward estricto (rank por Sharpe de closedPnl in-sample → net-bias OOS → IC causal next-hour). Top IC +0.075 > random +0.014 > bottom −0.052 (eje de skill real), persistencia +0.18. PERO **placebo p=0.32 (falla <0.05)**, IC ~0.07 horario no sobrevive fees, solo 3 ventanas cortas (fetch cortado por rate-limit a 355/600 wallets). Sugestivo pero underpowered; el "más vivo de los muertos" — un re-run con más wallets/ventanas/historia PODRÍA moverlo. Scripts bt_hyperliquid_smartmoney.py / bt_analyze_cached.py |
+| L4 | **Tether "autorizado-no-emitido"** (balance de tesorería) | BigQuery crypto_ethereum.token_transfers | ❌ **REFUTADO** (null contundente). 8a de balance de tesorería (0x5754…b949, 342GB facturados). IC negativo y minúsculo (signo AL REVÉS del mecanismo "dry powder"). Non-solapado |t|<1.3, permutación todos p>0.2. Es serie DISTINTA del supply circulante (corr −0.10, no es reempaquetado) pero cero edge incremental. Script bt_tether_treasury.py |
+| L3 | **Cola de validadores ETH** (oferta de venta futura con delay de protocolo) | beaconcha.in (gated) / BigQuery (proxy) | ⚠️ **entrada REFUTADA / salida DATA-GATED**. La cola de SALIDA (el verdadero mecanismo) vive en la beacon chain y todas las fuentes gratis piden auth ahora (beaconcha.in/rated/Dune) → necesita API key GRATIS de beaconcha.in. Proxy testeable: flujo de depósitos al contrato de staking (BigQuery, 190GB, 2021-26 n=2002) → IC~0, permutación p>0.23 → REFUTADO. Script bt_eth_staking_flow.py |
+
+**Resultado:** 0 edges operables. L4 refutado limpio; L3 entrada refutada (salida pendiente de key gratis);
+L7 débil/underpowered pero con estructura sugestiva (único candidato a re-run más profundo).
+
+**Aprendizajes:**
+- Las ideas de *timing puro* más jugosas (mempool whale-deposit, listing-leak, cert-transparency)
+  no tienen historia para backtestear → requieren **forward-collection desde hoy**, no se pueden validar retro.
+- El acceso gratis a data on-chain "seria" se está cerrando: beaconcha.in y Etherscan ahora piden key;
+  BigQuery público sigue siendo la mejor vía gratis que queda.
+- Refuerza el patrón: el posicionamiento por DERIVADOS (funding #6, vol implícita F5) sigue siendo lo único
+  con señal; los flujos de oferta on-chain (unlocks, Tether, staking) dan null tras null.
+
+---
+
+## 4h. #6.1 dos-lados (long+short) — 2026-08-11 · ❌ EMPEORA, no adoptar
+
+Test: agregar la pata LONG espejo a #6 (long cuando funding muy NEGATIVO + dispersión comprimida =
+"crowded shorts → squeeze"). Sin parámetros nuevos, pura simetría. BTC 2020-02→2026-08, neto de
+fees 0.08% RT + crédito de funding. Script bt_exploit6_twosided.py.
+
+**Resultado inequívoco: la pata long es lastre neto y destruye el edge bear de #6.**
+
+| Variante | Sharpe (1x) | annRet (1x) | maxDD (1x) | N | win |
+|---|---|---|---|---|---|
+| #6 short-only | +0.09 | -1.22% | -56.8% | 338 | 50.3% |
+| #6.1 two-sided | **-0.09** | -11.70% | -78.1% | 579 | 48.9% |
+
+- **Por régimen (clave):** #6 short-only en BEAR = +236% (3x), Sharpe +0.90 — ES el motor. #6.1 lo
+  convierte en -115% (los longs compran "crowded shorts" que siguen cayendo). En BULL ninguna funciona
+  (#6.1 pierde un poco más). La simetría NO tapa el sangrado bull y canibaliza el alfa bear.
+- **Pata long aislada:** 241 trades, win 45.6%, -148% acumulado (3x). Empíricamente el thesis
+  "funding muy negativo → long" NO se sostiene.
+- OOS ambas mitades: #6.1 peor que #6 en las dos. Sin período que rescate la pata long.
+
+**DOS CONCLUSIONES:**
+1. **#6 queda SHORT-ONLY.** La simetría es empíricamente falsa acá.
+2. **Dato duro sobre #6:** sobre el ciclo completo #6 short-only es apenas break-even (Sharpe +0.09,
+   annRet -1.2% 1x); TODO su alfa vive en BEAR (Sharpe +0.90) y sangra en BULL (Sharpe -0.31 a -0.64).
+   → #6 es un "cosechador de downtrend", no un money-maker all-weather. **El próximo paso de valor NO es
+   más simetría sino un GATE DE RÉGIMEN**: correr #6 solo cuando px<200d MA (donde tiene Sharpe +0.90).
+   Un parámetro conocido, bajo riesgo de overfit, y la separación bull/bear es enorme y limpia.
+3. **Apalancamiento:** 3x notional-fijo sobre el ciclo completo = RUINA (maxDD -97% #6, >-100% #6.1).
+   El sizing en vivo (risk 1%/trade) es mucho más conservador que "3x siempre", pero confirma que
+   apalancar #6 sin gate de régimen es jugar a que no venga el bull.
+
+---
+
+## 4i. Barrido de 10 variantes de #6 (2026-08-11) — dataset compartido, P&L 5.5y, batería por régimen
+
+10 agentes paralelos, cada uno una variante, sobre shared_funding.pkl + shared_klines.pkl (13 syms, 2019-2026).
+Todos net de 0.08% RT + crédito de funding, Sharpe 1x, split BULL/BEAR (200dMA). Baseline #6 short-only: full-cycle Sharpe ~+0.09/0.16, BEAR ~+0.90-1.08, BULL negativo. Scripts bt6v1..v10 en scratchpad.
+
+| v | Variante | Veredicto | Resultado clave |
+|---|---|---|---|
+| **1** | **Gate de régimen** (short solo px<MA) | ✅ **MEJORA** | Sharpe +0.10→**+0.45** (50dMA) / +0.39 (100dMA); maxDD −56%→−26/−32%; annRet neg→+5%. Los 4 filtros coinciden (meseta). El 200d "de manual" es el MÁS FLOJO; la ventaja está en los filtros RÁPIDOS (50-100d = pullback de corto plazo). 100d = el más balanceado (retiene 93% del alfa bear). |
+| **2** | **Reglas de salida** | ✅ **MEJORA** | Stop catástrofe 9%→**4%** ~triplica Sharpe (+0.16→**+0.49**), maxDD −59%→−45%. Meseta estable (4-5% en todo el grid), aguanta ambas mitades. TP no ayuda; trailing PERJUDICA (y ojo: un trailing "mágico" +1.57 era look-ahead de fills en gaps → corregido a gap-aware colapsó a −0.31). Cost-sensitive: se degrada >0.18% RT. |
+| 3 | Mapa de robustez | ✅ **ROBUSTO** (validación) | Umbrales (0.5,−0.25) en meseta suave, valores en vivo CONSERVADORES (no pico de suerte). 29/30 celdas bear positivas. Ventana 30 es el óptimo del eje (magnitud algo sensible) pero signo robusto. #6 NO está overfitteado. |
+| 4 | Tamaño por convicción | ❌ **PEOR** | La "strength" está DESCORRELACIONADA del P&L (Spearman ≈0); las señales fuertes ganan MENOS seguido (41% vs 54% win). El Sharpe full-cycle "mejora" pero es trampa (todo en período viejo, revierte OOS, empeora bear). Usar tamaño FLAT. |
+| 5 | Moneda cross-sectional | ❌ **PEOR** full-cycle | Sharpe +0.09→−0.26. Nuance: en BEAR shortear la alt más crowded rinde más (Sharpe 1.28 vs 0.99, +163% vs +80%) pero el bull bleed lo tapa + iliquidez alts. Curiosidad bear-only. |
+| 6 | Canasta de alts | 🟡 **SIN CAMBIO** | Fragilidad cruda mayor en alts (bear +27% vs +19%) pero es VOL extra, no señal: Sharpe sube solo +0.02-0.05, no estable en N. No arregla el defecto. |
+| 7 | Ablación de dispersión | ✅ **DISPERSIÓN APORTA** (validación) | #6-completo bate a common-only en TODO (Sharpe +0.09 vs −0.21). PERO ningún término solo funciona; la novedad es la CONJUNCIÓN (AND-gate) que poda las peores entradas (win 49→50%, avg/trade −0.55%→−0.14%). |
+| **8** | **Aceleración de funding** | ✅ **MEJORA** (V2) | Entrar cuando el crowding SE DA VUELTA (cchg<0): Sharpe +0.27, maxDD −34%. Entrar mientras SUBE (cchg>0) = desastre (−0.58). Overlay bull-safe (misma familia que el gate: evita shortear la suba). En BEAR el level-base sigue mejor. |
+| 9 | Filtro DVOL (F5) | 🟡 **SIN CAMBIO** | Muestra 2021+ (base ya ~0 edge). Deltas minúsculas y no-monótonas (ruido). Solo leve baja de maxDD (−58→−48/53%) apoyada en 24-97 días → no confiable. |
+| 10 | Vol-targeting | ❌ **PEOR** | Backfire elegante: el edge de #6 vive en ALTA vol (crashes); el inverse-vol achica la posición justo cuando el short paga. Retornos correlacionados POSITIVO con vol → vol-targeting está al revés acá. |
+
+### Síntesis
+- **Dos mejoras robustas e independientes (ortogonales → deberían STACKEAR):** (1) **gate de régimen** (WHEN: short solo en downtrend, 50-100dMA) y (2) **stop 4%** (HOW: control del left-tail). Una toca la entrada, la otra la salida.
+- **Una tercera** (v8 rollover) ataca el mismo defecto que el gate (evitar shortear la suba) → posiblemente redundante con v1.
+- **Dos validaciones fuertes:** #6 es robusto (v3) y la dispersión aporta vía la conjunción (v7).
+- **Descartes útiles:** sizing por convicción (v4), cross-section (v5), canasta (v6), DVOL (v9), vol-target (v10) — no mejoran o empeoran.
+- **Todo sigue siendo modesto (Sharpe <0.5), bear-dependiente y cost-sensitive.** Las mejoras son control de cola/bull-avoidance, NO mayor win-rate.
+- **PRÓXIMO PASO:** combinar gate-de-régimen (100dMA) + stop-4% + sizing flat → "#6.2" y confirmar que stackean (esperado: Sharpe ~0.5-0.7, maxDD <−30%).
