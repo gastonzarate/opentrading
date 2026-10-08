@@ -145,6 +145,15 @@ class BinanceTools:
         Example:
             >>> _open_long_position(currency="BTC", stop_loss_price=98000.0, take_profit_price=104000.0, leverage=3)
         """
+        # Anti-stacking guard: refuse to open if a position in this symbol already
+        # exists. Without it the LLM tool-loop could call open_* repeatedly in a single
+        # run and STACK oversized positions — the root cause of the -$73.89 BNB blow-up
+        # (6 near-simultaneous opens observed 2026-08-14).
+        existing = self.binance_client.get_open_position(currency)
+        if existing not in (0, None):
+            return {"error": f"Ya existe posición {currency} ({existing}); no se apila otra (guarda anti-stacking).",
+                    "skipped": True, "existing_position_amt": existing}
+
         # Create operation record
         operation = TradingOperation.objects.create(
             operation_type=TradingOperation.OperationType.OPEN_LONG,
@@ -210,6 +219,13 @@ class BinanceTools:
         Example:
             >>> _open_short_position(currency="ETH", stop_loss_price=3605.0, take_profit_price=3290.0, leverage=3)
         """
+        # Anti-stacking guard (see _open_long_position): never stack a second position
+        # in the same symbol within one agent run.
+        existing = self.binance_client.get_open_position(currency)
+        if existing not in (0, None):
+            return {"error": f"Ya existe posición {currency} ({existing}); no se apila otra (guarda anti-stacking).",
+                    "skipped": True, "existing_position_amt": existing}
+
         # Create operation record
         operation = TradingOperation.objects.create(
             operation_type=TradingOperation.OperationType.OPEN_SHORT,
