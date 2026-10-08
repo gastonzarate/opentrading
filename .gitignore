@@ -347,3 +347,11 @@ trendradar/*
 trendradar/output/
 # Git worktrees for isolated feature development
 .worktrees/
+
+# GCP service-account key (secreto — nunca commitear)
+sleekreply-*.json
+*-service-account*.json
+
+# Artefactos locales de Playwright MCP / capturas de debug
+.playwright-mcp/
+debug-dashboard.png
