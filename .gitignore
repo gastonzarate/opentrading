@@ -355,3 +355,6 @@ sleekreply-*.json
 # Artefactos locales de Playwright MCP / capturas de debug
 .playwright-mcp/
 debug-dashboard.png
+
+# Config local con valores reales (usar env.example como plantilla)
+env.local

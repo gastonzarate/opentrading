@@ -167,7 +167,7 @@ graph TB
 2. **Copy environment configuration**
 
    ```bash
-   cp env.local .env
+   cp env.example .env
    ```
 
 3. **Configure environment variables**
