@@ -575,3 +575,47 @@ Todos net de 0.08% RT + crédito de funding, Sharpe 1x, split BULL/BEAR (200dMA)
 - **Descartes útiles:** sizing por convicción (v4), cross-section (v5), canasta (v6), DVOL (v9), vol-target (v10) — no mejoran o empeoran.
 - **Todo sigue siendo modesto (Sharpe <0.5), bear-dependiente y cost-sensitive.** Las mejoras son control de cola/bull-avoidance, NO mayor win-rate.
 - **PRÓXIMO PASO:** combinar gate-de-régimen (100dMA) + stop-4% + sizing flat → "#6.2" y confirmar que stackean (esperado: Sharpe ~0.5-0.7, maxDD <−30%).
+
+---
+
+## 4j. Ronda 3 — 100 hacks nuevos (ideación, 2026-10-27)
+
+Equipo de 5 sesiones Kiro (K1-K4 ideación por familia, K5 revisión/convergencia),
+coordinado por el TL. Brief, fichas y convergencia en `docs/research/round3/`:
+`BRIEF.md`, `k1-derivados.md`, `k2-timing-metadata.md`,
+`k3-calendario-crossasset.md`, `k4-defi-lag.md` y `convergence.md`.
+Misma línea roja que §4g: solo datos públicos.
+
+| Familia | Fichas | Archivo |
+|---|---|---|
+| K1 Derivados / posicionamiento | 25 | `round3/k1-derivados.md` |
+| K2 Timing / metadata pública | 25 | `round3/k2-timing-metadata.md` |
+| K3 Calendario y cross-asset | 25 | `round3/k3-calendario-crossasset.md` |
+| K4 Mecanismos DeFi con lag | 25 | `round3/k4-defi-lag.md` |
+
+**Convergencia (K5):** 0 violaciones de línea roja; 7 descartes por redundancia
+dura con lo ya refutado (K3-11, K3-03, K3-24, K1-20, K1-03, K2-10, K2-09);
+5 fichas fusionadas en otras → **88 ideas distintas**. De ellas, 6 son
+research-only (sub-minuto) y ~21 no tienen historia pública gratis.
+
+**Top-10 para backtest (score K5 re-calibrado):**
+
+| # | id | Hipótesis | K5 | Datos |
+|---|---|---|---|---|
+| 1 | K3-07 | CFTC COT Leveraged-Funds Net Position | 3.8 | CFTC TFF (gratis) |
+| 2 | K1-01 | Pendiente de la curva de funding (perp vs trimestral) | 3.7 | Binance/Bybit (gratis) |
+| 3 | K1-02 | Dispersión de funding entre venues | 3.6 | multi-venue (gratis) |
+| 4 | K4-01 | Proximidad a cascada de liquidaciones en lending (HF) | 3.6 | Aave subgraph |
+| 5 | K1-21 | Residual idiosincrático de beta-funding vs BTC | 3.5 | funding (gratis) |
+| 6 | K3-12 | FOMC Pre-Announcement Drift | 3.5 | calendario FOMC + klines |
+| 7 | K4-08 | Overhang de la cola de redención de LST | 3.5 | Lido RPC/subgraph |
+| 8 | K1-11 | Flujo de OI por tipo de margen (coin-M vs USDT) | 3.4 | Bybit/Binance OI |
+| 9 | K3-15 | Fed Net-Liquidity Weekly Delta | 3.4 | FRED (gratis) |
+| 10 | K1-15 | Concentración (HHI) del OI por wallet en Hyperliquid | 3.3 | Hyperliquid API |
+
+**Estado:** solo ideación — ninguna está backtesteada. Decisión (2026-10-27):
+**las 100 se prueban end-to-end** (no solo el top-10) con un harness común y la
+batería completa (IC no-solapado + permutación + OOS + control por vol + P&L neto
+de costos). Las que no tengan historia pública se buscan en fuentes alternativas o
+vendors; si aun así no hay datos, quedan DATA-GATED con la evidencia del intento.
+Los veredictos irán en §4k.
